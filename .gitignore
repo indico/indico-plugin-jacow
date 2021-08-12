@@ -1,0 +1,13 @@
+.coverage
+htmlcov/
+.vscode/
+.idea/
+*.min.css
+*.min.js
+*.pyc
+.*.swp
+*.egg-info
+dist/
+build/
+wheelhouse/
+.cache/
