@@ -50,6 +50,7 @@ def sync_profiles():
         identity = Identity(provider=info.provider.name, identifier=info.identifier, data=info.data,
                             multipass_data=info.multipass_data)
         user.identities.add(identity)
+        user.is_pending = False  # pending users w/ an identity can't log in
         JACOWPlugin.logger.info('Adding identity %r to %r', identity, user)
         db.session.flush()
 
