@@ -1,9 +1,11 @@
+from flask_pluginengine import render_plugin_template
 from wtforms.fields import BooleanField
 
 from indico.core.plugins import IndicoPlugin
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.widgets import SwitchWidget
+from indico_jacow.blueprint import blueprint
 
 
 class SettingsForm(IndicoForm):
@@ -22,3 +24,13 @@ class JACOWPlugin(IndicoPlugin):
     default_settings = {
         'sync_enabled': False,
     }
+
+    def init(self):
+        super().init()
+        self.template_hook('abstract-list-options', self.inject_export_button)
+
+    def inject_export_button(self, event=None):
+        return render_plugin_template('export_button.html', event=event)
+
+    def get_blueprints(self):
+        return blueprint
