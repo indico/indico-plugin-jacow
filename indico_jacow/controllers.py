@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts
-from indico.util.spreadsheets import send_csv
+from indico.util.spreadsheets import send_csv, send_xlsx
 
 
 class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
@@ -40,4 +40,4 @@ class RHAbstractsExportCSV(RHAbstractsExportBase):
 
 class RHAbstractsExportExcel(RHAbstractsExportBase):
     def _process(self):
-        return send_csv('abstracts.xlsx', *self._generate_spreadsheet())
+        return send_xlsx('abstracts.xlsx', *self._generate_spreadsheet())
