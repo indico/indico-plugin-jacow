@@ -40,7 +40,7 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
                                                                     len(scores), 1) if scores else 0
                 if question.field_type == 'bool':
                     for answer in [True, False, None]:
-                        count = len([v for v in ratings.get(question, []) if v == answer])
+                        count = len([v for v in ratings.get(question, []) if v.value == answer])
                         rows[idx][get_count_column(question.title, answer)] = count
 
         return field_names, rows
