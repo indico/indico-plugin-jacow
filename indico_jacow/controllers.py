@@ -26,8 +26,9 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
 
         questions = [question for question in self.event.abstract_review_questions if not question.is_deleted]
         for question in questions:
-            field_names.append(f'Question {question.title} (AVG score)')
-            if question.field_type == 'bool':
+            if question.field_type == 'rating':
+                field_names.append(f'Question {question.title} (AVG score)')
+            elif question.field_type == 'bool':
                 for answer in [True, False, None]:
                     field_names.append(f'Question {question.title} ({str(answer)})')
 

@@ -38,7 +38,8 @@ def test_get_abstracts(db, app, dummy_event, dummy_user):
     rh.abstracts = [dummy_abstract]
     with app.test_request_context():
         rh.list_generator = AbstractListGeneratorManagement(event=dummy_event)
-        _, rows = rh._generate_spreadsheet()
+        field_names, rows = rh._generate_spreadsheet()
+        assert f'Question {bool_question.title} (AVG score)' not in field_names
         assert rows[0][f'Question {rating_question.title} (AVG score)'] == 1.5
         assert rows[0][f'Question {bool_question.title} (True)'] == 1
         assert rows[0][f'Question {bool_question.title} (False)'] == 1
