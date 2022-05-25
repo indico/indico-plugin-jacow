@@ -35,11 +35,12 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
         for idx, abstract in enumerate(self.abstracts):
             ratings = self.get_ratings(abstract)
             for question in questions:
-                scores = [r for r in ratings.get(question, [])
+                if question.field_type == 'rating':
+                    scores = [r for r in ratings.get(question, [])
                           if not r.question.no_score and r.value is not None]
-                rows[idx][get_score_column(question.title)] = round(sum(r.value for r in scores) /
-                                                                    len(scores), 1) if scores else 0
-                if question.field_type == 'bool':
+                    rows[idx][get_score_column(question.title)] = round(sum(r.value for r in scores) /
+                                                                        len(scores), 1) if scores else 0
+                elif question.field_type == 'bool':
                     for answer in [True, False, None]:
                         count = len([v for v in ratings.get(question, []) if v.value == answer])
                         rows[idx][get_count_column(question.title, answer)] = count
