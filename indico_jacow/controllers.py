@@ -1,8 +1,10 @@
-from collections import Counter, defaultdict
+from collections import defaultdict
+from statistics import mean, pstdev
 
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts
 from indico.util.spreadsheets import send_csv, send_xlsx
+from indico.web.flask.util import url_for
 
 
 class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
@@ -18,32 +20,36 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
         field_names, rows = generate_spreadsheet_from_abstracts(self.abstracts, export_config['static_item_ids'],
                                                                 export_config['dynamic_items'])
 
-        def get_score_column(title):
-            return f'Question {title} (AVG score)'
-
-        def get_count_column(title, value):
+        def get_question_column(title, value):
             return f'Question {title} ({str(value)})'
 
         questions = [question for question in self.event.abstract_review_questions if not question.is_deleted]
         for question in questions:
             if question.field_type == 'rating':
-                field_names.append(f'Question {question.title} (AVG score)')
+                field_names.append(get_question_column(question.title, 'total count'))
+                field_names.append(get_question_column(question.title, 'AVG score'))
+                field_names.append(get_question_column(question.title, 'STD deviation'))
             elif question.field_type == 'bool':
                 for answer in [True, False, None]:
-                    field_names.append(f'Question {question.title} ({str(answer)})')
+                    field_names.append(get_question_column(question.title, answer))
+        field_names.append('URL')
 
         for idx, abstract in enumerate(self.abstracts):
             ratings = self.get_ratings(abstract)
             for question in questions:
                 if question.field_type == 'rating':
-                    scores = [r for r in ratings.get(question, [])
-                          if not r.question.no_score and r.value is not None]
-                    rows[idx][get_score_column(question.title)] = round(sum(r.value for r in scores) /
-                                                                        len(scores), 1) if scores else 0
+                    scores = [r.value for r in ratings.get(question, [])
+                              if not r.question.no_score and r.value is not None]
+                    rows[idx][get_question_column(question.title, 'total count')] = len(scores)
+                    rows[idx][get_question_column(question.title, 'AVG score')] = (round(mean(scores), 1)
+                                                                                   if scores else '')
+                    rows[idx][get_question_column(question.title, 'STD deviation')] = (round(pstdev(scores), 1)
+                                                                                       if len(scores) >= 2 else '')
                 elif question.field_type == 'bool':
                     for answer in [True, False, None]:
                         count = len([v for v in ratings.get(question, []) if v.value == answer])
-                        rows[idx][get_count_column(question.title, answer)] = count
+                        rows[idx][get_question_column(question.title, answer)] = count
+            rows[idx]['URL'] = url_for('abstracts.display_abstract', abstract, management=False, _external=True)
 
         return field_names, rows
 
