@@ -1,10 +1,17 @@
+# This file is part of the JACoW plugin.
+# Copyright (C) 2021 - 2022 CERN
+#
+# The CERN Indico plugins are free software; you can redistribute
+# them and/or modify them under the terms of the MIT License; see
+# the LICENSE file for more details.
+
 import pytest
 
 from indico.modules.events.abstracts.lists import AbstractListGeneratorManagement
 from indico.modules.events.abstracts.models.abstracts import Abstract
 from indico.modules.events.abstracts.models.review_questions import AbstractReviewQuestion
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
-from indico.modules.events.abstracts.models.reviews import AbstractReview, AbstractAction
+from indico.modules.events.abstracts.models.reviews import AbstractAction, AbstractReview
 from indico.modules.events.tracks import Track
 
 

@@ -1,3 +1,10 @@
+# This file is part of the JACoW plugin.
+# Copyright (C) 2021 - 2022 CERN
+#
+# The CERN Indico plugins are free software; you can redistribute
+# them and/or modify them under the terms of the MIT License; see
+# the LICENSE file for more details.
+
 from flask_pluginengine import render_plugin_template
 from wtforms.fields import BooleanField
 
@@ -5,6 +12,7 @@ from indico.core.plugins import IndicoPlugin
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.widgets import SwitchWidget
+
 from indico_jacow.blueprint import blueprint
 
 
