@@ -14,7 +14,7 @@ from indico.modules.auth import Identity
 from indico.modules.users import User
 
 
-@celery.periodic_task(run_every=crontab(minute=0, hour=1))
+@celery.periodic_task(run_every=crontab(minute=0))
 def sync_profiles():
     from indico_jacow.plugin import JACOWPlugin
     if not JACOWPlugin.settings.get('sync_enabled'):
