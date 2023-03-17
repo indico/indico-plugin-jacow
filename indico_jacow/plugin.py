@@ -5,13 +5,16 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
+from flask import session
 from flask_pluginengine import render_plugin_template
 from wtforms.fields import BooleanField
 
-from indico.core.plugins import IndicoPlugin
+from indico.core import signals
+from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.widgets import SwitchWidget
+from indico.web.menu import SideMenuItem
 
 from indico_jacow.blueprint import blueprint
 
@@ -36,9 +39,16 @@ class JACOWPlugin(IndicoPlugin):
     def init(self):
         super().init()
         self.template_hook('abstract-list-options', self.inject_export_button)
+        self.connect(signals.menu.items, self.add_sidemenu_item, sender='event-management-sidemenu')
 
     def inject_export_button(self, event=None):
         return render_plugin_template('export_button.html', event=event)
+
+    def add_sidemenu_item(self, sender, event, **kwargs):
+        if not event.can_manage(session.user) or not event.has_feature('abstracts'):
+            return
+        return SideMenuItem('abstracts_stats', _('CfA Statistics'),
+                            url_for_plugin('jacow.abstracts_stats', event), section='reports')
 
     def get_blueprints(self):
         return blueprint

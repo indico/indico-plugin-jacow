@@ -1,0 +1,77 @@
+{% extends 'events/management/base.html' %}
+
+{% from 'events/tracks/_track_list.html' import render_list %}
+
+{% block title %}
+    {%- trans %}Call for Abstracts Statistics{% endtrans -%}
+{% endblock %}
+
+{% block description %}
+    {%- trans -%}
+        Statistics regarding the Call for Abstracts review and judgement process.
+    {%- endtrans -%}
+{% endblock %}
+
+{% macro _render_stats_table(counts) %}
+    <table class="i-table-widget tablesorter">
+        <thead>
+            <tr class="i-table">
+                <th class="i-table" rowspan="2">{% trans %}Reviewer{% endtrans %}</th>
+                {% for item in list_items -%}
+                    {% if item.is_track_group %}
+                        <th class="i-table" colspan="{{ item.tracks|length + 1 }}">{{ item.code if item.code else item.title }}</th>
+                    {% else %}
+                        <th class="i-table" rowspan="2">{{ item.code if item.code else item.title }}</th>
+                    {% endif %}
+                {%- else -%}
+                    <th class="i-table" rowspan="2">{% trans %}Number of reviews{% endtrans %}</th>
+                {%- endfor %}
+                <th class="i-table" rowspan="2">{% trans %}Total{% endtrans %}</th>
+            </tr>
+            <tr class="i-table">
+                {% for item in list_items -%}
+                    {% if item.is_track_group %}
+                        {% for track in item.tracks %}
+                            <th class="i-table">{{ track.code if track.code else track.title }}</th>
+                        {% endfor %}
+                        <th class="i-table">{% trans %}Subtotal{% endtrans %}</th>
+                    {% endif %}
+                {%- endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for reviewer in reviewers -%}
+                {% set reviewer_counts = counts[reviewer] %}
+                <tr class="i-table">
+                    <td class="i-table name-column">
+                        {{ reviewer.full_name }}
+                    </td>
+                    {% for item in list_items -%}
+                        {% if item.is_track_group %}
+                            {% for track in item.tracks -%}
+                                <td class="i-table">{{ reviewer_counts[track] }}</td>
+                            {%- endfor %}
+                            <td class="i-table">{{ reviewer_counts[item] }}</td>
+                        {% else %}
+                            <td class="i-table">{{ reviewer_counts[item] }}</td>
+                        {% endif %}
+                    {%- endfor %}
+                    <td class="i-table">{{ reviewer_counts.total }}</td>
+                </tr>
+            {%- endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+{% block content %}
+    <h3>{% trans %}Number of reviews per track{% endtrans %}</h3>
+    {% if reviewers and list_items %}
+        {{ _render_stats_table(review_counts) }}
+    {% else %}
+        {%- trans %}No reviews have been made yet.{% endtrans -%}
+    {% endif %}
+    {% for question in questions %}
+        <h3>{% trans title=question.title %}Positive answers to question "{{ title }}"{% endtrans %}</h3>
+        {{ _render_stats_table(question_counts[question]) }}
+    {% endfor %}
+{% endblock %}

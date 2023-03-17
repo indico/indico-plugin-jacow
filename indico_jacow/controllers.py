@@ -8,10 +8,58 @@
 from collections import defaultdict
 from statistics import mean, pstdev
 
+from sqlalchemy.orm import load_only
+
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
-from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts
+from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
+from indico.modules.events.abstracts.models.reviews import AbstractReview
+from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts, get_track_reviewer_abstract_counts
+from indico.modules.events.management.controllers import RHManageEventBase
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.web.flask.util import url_for
+
+from indico_jacow.views import WPAbstractsStats
+
+
+class RHAbstractsStats(RHManageEventBase):
+    """Display reviewing statistics for a given event."""
+
+    def _process(self):
+        query = (AbstractReview.query
+                 .filter(AbstractReview.abstract.has(event=self.event))
+                 .options(load_only('user_id')))
+        reviewers = sorted({r.user for r in query}, key=lambda x: x.display_full_name.lower())
+        list_items = [item for item in self.event.get_sorted_tracks() if not item.is_track_group or item.tracks]
+        review_counts = {user: get_track_reviewer_abstract_counts(self.event, user) for user in reviewers}
+        for user in review_counts:
+            review_counts[user] = {track: review_counts[user][track]['reviewed'] for track in review_counts[user]}
+            review_counts[user]['total'] = sum(review_counts[user][track] for track in review_counts[user])
+            for group in self.event.track_groups:
+                review_counts[user][group] = sum(review_counts[user][track] for track in group.tracks)
+
+        # get the positive answers to boolean questions
+        questions = [question
+                     for question in self.event.abstract_review_questions
+                     if not question.is_deleted and question.field_type == 'bool']
+        question_counts = {}
+        for question in questions:
+            question_counts[question] = {}
+            for user in reviewers:
+                question_counts[question][user] = {}
+                for track in self.event.tracks:
+                    query = (AbstractReviewRating.query
+                             .filter_by(question=question)
+                             .filter(AbstractReviewRating.value[()].astext == 'true')
+                             .join(AbstractReview)
+                             .filter_by(user=user, track=track))
+                    question_counts[question][user][track] = query.count()
+                question_counts[question][user]['total'] = sum(question_counts[question][user].values())
+                for group in self.event.track_groups:
+                    question_counts[question][user][group] = sum(question_counts[question][user][track]
+                                                                 for track in group.tracks)
+        return WPAbstractsStats.render_template('abstracts_stats.html', self.event, reviewers=reviewers,
+                                                list_items=list_items, review_counts=review_counts,
+                                                questions=questions, question_counts=question_counts)
 
 
 class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
