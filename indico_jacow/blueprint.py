@@ -7,13 +7,16 @@
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_jacow.controllers import RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats
+from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
+                                      RHDisplayAbstractsStatistics)
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
 
 
 # Statistics
+blueprint.add_url_rule('/abstracts/reviewing/statistics', 'reviewer_stats',
+                       RHDisplayAbstractsStatistics, methods=('GET',))
 blueprint.add_url_rule('/manage/abstracts/statistics', 'abstracts_stats',
                        RHAbstractsStats, methods=('GET',))
 

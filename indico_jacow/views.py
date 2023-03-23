@@ -6,7 +6,13 @@
 # the LICENSE file for more details.
 
 from indico.core.plugins import WPJinjaMixinPlugin
+from indico.modules.events.abstracts.views import WPDisplayAbstracts
 from indico.modules.events.management.views import WPEventManagement
+
+
+class WPDisplayAbstractsStatistics(WPJinjaMixinPlugin, WPDisplayAbstracts):
+    menu_entry_name = 'abstract_reviewing_stats'
+    menu_entry_plugin = 'jacow'
 
 
 class WPAbstractsStats(WPJinjaMixinPlugin, WPEventManagement):
