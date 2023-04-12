@@ -1,0 +1,80 @@
+{% extends 'events/display/conference/base.html' %}
+
+{% block title %}
+    {{- page_title -}}
+{% endblock %}
+
+{% block description %}
+    {%- trans %}The reviewing statistics area shows statistics for the tracks for which you are a reviewer.{% endtrans -%}
+{% endblock %}
+
+{% macro _render_labels(track) %}
+    {% set count = abstract_count[track] %}
+    <div class="label i-tag"
+         title="{% trans %}Number of abstracts you have reviewed{% endtrans %}">
+        {%- trans %}Reviewed{% endtrans -%}
+        <span class="badge">{{ count.reviewed }}</span>
+    </div>
+    <div class="label i-tag"
+         title="{% trans %}Number of unreviewed abstracts{% endtrans %}">
+        {%- trans %}Unreviewed{% endtrans -%}
+        <span class="badge">{{ count.unreviewed }}</span>
+    </div>
+    {% for question in question_counts %}
+        <div class="label i-tag"
+             title="{% trans %}Number of positive answers to the question{% endtrans %}">
+            {{ question.title }}
+            <span class="badge">{{ question_counts[question][track] or 0 }}</span>
+        </div>
+    {% endfor %}
+{% endmacro %}
+
+{% macro _render_track(track) %}
+    <div class="title">
+        <a href="{{ url_for('abstracts.display_reviewable_track_abstracts', track) }}">
+            {{- track.title -}}
+        </a>
+    </div>
+    {{ _render_labels(track) }}
+{% endmacro %}
+
+{% block content %}
+    <div class="track-review-list">
+        {% if not list_items %}
+            <div class="info-message-box">
+                <span class="icon"></span>
+                <div class="message-text">
+                    {%- trans %}There are currently no tracks for which you are a reviewer or convener.{% endtrans -%}
+                </div>
+            </div>
+        {% else %}
+            <ul>
+                {% for item in list_items %}
+                    <div class="track-review-row">
+                        <li>
+                            {% if item.is_track_group %}
+                                <div class="title">
+                                    {{- item.title -}}
+                                </div>
+                                {{ _render_labels(item) }}
+                                <ul>
+                                    {% for track in item.tracks %}
+                                        {% if track.can_review_abstracts(session.user) %}
+                                            <div class="track-review-row">
+                                                <li>
+                                                    {{ _render_track(track) }}
+                                                </li>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                {{ _render_track(item) }}
+                            {% endif %}
+                        </li>
+                    </div>
+                {%  endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endblock %}
