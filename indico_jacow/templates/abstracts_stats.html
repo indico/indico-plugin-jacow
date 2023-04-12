@@ -32,7 +32,7 @@
                 {% for item in list_items -%}
                     {% if item.is_track_group %}
                         {% for track in item.tracks %}
-                            <th class="i-table">{{ track.code if track.code else track.title }}</th>
+                            <th class="i-table">{{ track.code or track.title }}</th>
                         {% endfor %}
                         <th class="i-table">{% trans %}Subtotal{% endtrans %}</th>
                     {% endif %}
@@ -49,11 +49,11 @@
                     {% for item in list_items -%}
                         {% if item.is_track_group %}
                             {% for track in item.tracks -%}
-                                <td class="i-table">{{ reviewer_counts[track] }}</td>
+                                <td class="i-table">{{ reviewer_counts[track] or 0 }}</td>
                             {%- endfor %}
-                            <td class="i-table">{{ reviewer_counts[item] }}</td>
+                            <td class="i-table">{{ reviewer_counts[item] or 0 }}</td>
                         {% else %}
-                            <td class="i-table">{{ reviewer_counts[item] }}</td>
+                            <td class="i-table">{{ reviewer_counts[item] or 0 }}</td>
                         {% endif %}
                     {%- endfor %}
                     <td class="i-table">{{ reviewer_counts.total }}</td>

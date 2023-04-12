@@ -12,12 +12,14 @@ from flask import session
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
 
+from indico.core.db import db
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.controllers.base import RHAbstractsBase
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
 from indico.modules.events.abstracts.models.reviews import AbstractReview
 from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts, get_track_reviewer_abstract_counts
 from indico.modules.events.management.controllers import RHManageEventBase
+from indico.modules.events.tracks.models.tracks import Track
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.web.flask.util import url_for
 
@@ -31,23 +33,24 @@ def _get_boolean_questions(event):
 
 
 def _get_question_counts(question, user):
-    counts = {}
-    for track in question.event.tracks:
-        query = (AbstractReviewRating.query
-                 .filter_by(question=question)
-                 .filter(AbstractReviewRating.value[()].astext == 'true')
-                 .join(AbstractReview)
-                 .filter_by(user=user, track=track))
-        counts[track] = query.count()
+    counts = (AbstractReviewRating.query
+              .filter_by(question=question)
+              .filter(AbstractReviewRating.value[()].astext == 'true')
+              .join(AbstractReview)
+              .filter_by(user=user)
+              .with_entities(AbstractReview.track_id, db.func.count())
+              .group_by(AbstractReview.track_id)
+              .all())
+    counts = {Track.query.get(track): count for track, count in counts}
     counts['total'] = sum(counts.values())
     for group in question.event.track_groups:
-        counts[group] = sum(counts[track] for track in group.tracks)
+        counts[group] = sum(counts[track] for track in group.tracks if track in counts)
     return counts
 
 
 class RHDisplayAbstractsStatistics(RHAbstractsBase):
     def _check_access(self):
-        if not session.user:
+        if not session.user or not any(track.can_review_abstracts(session.user) for track in self.event.tracks):
             raise Forbidden
         RHAbstractsBase._check_access(self)
 
@@ -58,8 +61,6 @@ class RHDisplayAbstractsStatistics(RHAbstractsBase):
             else:
                 return item.can_review_abstracts(session.user)
 
-        list_items = [item for item in self.event.get_sorted_tracks() if _show_item(item)]
-
         track_reviewer_abstract_count = get_track_reviewer_abstract_counts(self.event, session.user)
         for group in self.event.track_groups:
             track_reviewer_abstract_count[group] = {}
@@ -67,12 +68,9 @@ class RHDisplayAbstractsStatistics(RHAbstractsBase):
                 track_reviewer_abstract_count[group][attr] = sum(track_reviewer_abstract_count[track][attr]
                                                                  for track in group.tracks
                                                                  if track.can_review_abstracts(session.user))
-
-        questions = _get_boolean_questions(self.event)
-        question_counts = {}
-        for question in questions:
-            question_counts[question] = _get_question_counts(question, session.user)
-
+        list_items = [item for item in self.event.get_sorted_tracks() if _show_item(item)]
+        question_counts = {question: _get_question_counts(question, session.user)
+                           for question in _get_boolean_questions(self.event)}
         return WPDisplayAbstractsStatistics.render_template('reviewer_stats.html', self.event,
                                                             abstract_count=track_reviewer_abstract_count,
                                                             list_items=list_items, question_counts=question_counts)

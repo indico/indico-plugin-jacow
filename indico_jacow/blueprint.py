@@ -15,10 +15,8 @@ blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:eve
 
 
 # Statistics
-blueprint.add_url_rule('/abstracts/reviewing/statistics', 'reviewer_stats',
-                       RHDisplayAbstractsStatistics, methods=('GET',))
-blueprint.add_url_rule('/manage/abstracts/statistics', 'abstracts_stats',
-                       RHAbstractsStats, methods=('GET',))
+blueprint.add_url_rule('/abstracts/reviewing/statistics', 'reviewer_stats', RHDisplayAbstractsStatistics)
+blueprint.add_url_rule('/manage/abstracts/statistics', 'abstracts_stats', RHAbstractsStats)
 
 # Custom exports
 blueprint.add_url_rule('/manage/abstracts/abstracts_custom.csv', 'abstracts_csv_export_custom',

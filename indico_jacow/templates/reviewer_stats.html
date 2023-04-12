@@ -24,7 +24,7 @@
         <div class="label i-tag"
              title="{% trans %}Number of positive answers to the question{% endtrans %}">
             {{ question.title }}
-            <span class="badge">{{ question_counts[question][track] }}</span>
+            <span class="badge">{{ question_counts[question][track] or 0 }}</span>
         </div>
     {% endfor %}
 {% endmacro %}

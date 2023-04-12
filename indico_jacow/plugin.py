@@ -11,7 +11,6 @@ from wtforms.fields import BooleanField
 
 from indico.core import signals
 from indico.core.plugins import IndicoPlugin, url_for_plugin
-from indico.modules.events.abstracts.util import has_user_tracks
 from indico.modules.events.layout.util import MenuEntryData
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
@@ -52,7 +51,6 @@ class JACOWPlugin(IndicoPlugin):
             if not session.user or not event.has_feature('abstracts'):
                 return False
             return any(track.can_review_abstracts(session.user) for track in event.tracks)
-            return has_user_tracks(event, session.user)
 
         return MenuEntryData(title=_('My Statistics'), name='abstract_reviewing_stats',
                              endpoint='jacow.reviewer_stats', position=1, parent='call_for_abstracts',
