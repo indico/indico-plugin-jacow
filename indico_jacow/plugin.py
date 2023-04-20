@@ -39,12 +39,20 @@ class JACOWPlugin(IndicoPlugin):
 
     def init(self):
         super().init()
-        self.template_hook('abstract-list-options', self.inject_export_button)
+        self.template_hook('abstract-list-options', self.inject_abstract_export_button)
+        self.template_hook('contribution-list-options', self.inject_contribution_export_button)
         self.connect(signals.event.sidemenu, self.extend_event_menu)
         self.connect(signals.menu.items, self.add_sidemenu_item, sender='event-management-sidemenu')
 
-    def inject_export_button(self, event=None):
-        return render_plugin_template('export_button.html', event=event)
+    def inject_abstract_export_button(self, event=None):
+        return render_plugin_template('export_button.html',
+                                      csv_url=url_for_plugin('jacow.abstracts_csv_export_custom', event),
+                                      xlsx_url=url_for_plugin('jacow.abstracts_xlsx_export_custom', event))
+
+    def inject_contribution_export_button(self, event=None):
+        return render_plugin_template('export_button.html',
+                                      csv_url=url_for_plugin('jacow.contributions_csv_export_custom', event),
+                                      xlsx_url=url_for_plugin('jacow.contributions_xlsx_export_custom', event))
 
     def extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):

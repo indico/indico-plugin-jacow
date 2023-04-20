@@ -18,6 +18,8 @@ from indico.modules.events.abstracts.controllers.base import RHAbstractsBase
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
 from indico.modules.events.abstracts.models.reviews import AbstractReview
 from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts, get_track_reviewer_abstract_counts
+from indico.modules.events.contributions.controllers.management import RHManageContributionsExportActionsBase
+from indico.modules.events.contributions.util import generate_spreadsheet_from_contributions
 from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.util.spreadsheets import send_csv, send_xlsx
@@ -104,6 +106,33 @@ class RHAbstractsStats(RHManageEventBase):
                                                 questions=questions, question_counts=question_counts)
 
 
+def _append_affiliation_data_fields(headers, rows, items):
+    def full_name_and_data(person, data):
+        return f'{person.full_name} ({data})' if data else person.full_name
+
+    def full_name_and_country(person):
+        return full_name_and_data(person, person.affiliation_link.country_code if person.affiliation_link else None)
+
+    def full_name_and_address(person):
+        if person.affiliation_link:
+            address = ' '.join(filter(None, (person.affiliation_link.postcode, person.affiliation_link.city)))
+            address = ', '.join(filter(None, (person.affiliation_link.street, address)))
+        else:
+            address = None
+        return full_name_and_data(person, address)
+
+    headers.extend(('Speakers (country)', 'Speakers (address)', 'Primary authors (country)',
+                    'Primary authors (address)', 'Co-Authors (country)', 'Co-Authors (address)'))
+
+    for idx, item in enumerate(items):
+        rows[idx]['Speakers (country)'] = [full_name_and_country(a) for a in item.speakers]
+        rows[idx]['Speakers (address)'] = [full_name_and_address(a) for a in item.speakers]
+        rows[idx]['Primary authors (country)'] = [full_name_and_country(a) for a in item.primary_authors]
+        rows[idx]['Primary authors (address)'] = [full_name_and_address(a) for a in item.primary_authors]
+        rows[idx]['Co-Authors (country)'] = [full_name_and_country(a) for a in item.secondary_authors]
+        rows[idx]['Co-Authors (address)'] = [full_name_and_address(a) for a in item.secondary_authors]
+
+
 class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
     def get_ratings(self, abstract):
         result = defaultdict(list)
@@ -114,8 +143,9 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
 
     def _generate_spreadsheet(self):
         export_config = self.list_generator.get_list_export_config()
-        field_names, rows = generate_spreadsheet_from_abstracts(self.abstracts, export_config['static_item_ids'],
-                                                                export_config['dynamic_items'])
+        headers, rows = generate_spreadsheet_from_abstracts(self.abstracts, export_config['static_item_ids'],
+                                                            export_config['dynamic_items'])
+        _append_affiliation_data_fields(headers, rows, self.abstracts)
 
         def get_question_column(title, value):
             return f'Question {title} ({str(value)})'
@@ -123,13 +153,13 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
         questions = [question for question in self.event.abstract_review_questions if not question.is_deleted]
         for question in questions:
             if question.field_type == 'rating':
-                field_names.append(get_question_column(question.title, 'total count'))
-                field_names.append(get_question_column(question.title, 'AVG score'))
-                field_names.append(get_question_column(question.title, 'STD deviation'))
+                headers.append(get_question_column(question.title, 'total count'))
+                headers.append(get_question_column(question.title, 'AVG score'))
+                headers.append(get_question_column(question.title, 'STD deviation'))
             elif question.field_type == 'bool':
                 for answer in [True, False, None]:
-                    field_names.append(get_question_column(question.title, answer))
-        field_names.append('URL')
+                    headers.append(get_question_column(question.title, answer))
+        headers.append('URL')
 
         for idx, abstract in enumerate(self.abstracts):
             ratings = self.get_ratings(abstract)
@@ -148,7 +178,7 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
                         rows[idx][get_question_column(question.title, answer)] = count
             rows[idx]['URL'] = url_for('abstracts.display_abstract', abstract, management=False, _external=True)
 
-        return field_names, rows
+        return headers, rows
 
 
 class RHAbstractsExportCSV(RHAbstractsExportBase):
@@ -159,3 +189,20 @@ class RHAbstractsExportCSV(RHAbstractsExportBase):
 class RHAbstractsExportExcel(RHAbstractsExportBase):
     def _process(self):
         return send_xlsx('abstracts.xlsx', *self._generate_spreadsheet())
+
+
+class RHContributionsExportBase(RHManageContributionsExportActionsBase):
+    def _generate_spreadsheet(self):
+        headers, rows = generate_spreadsheet_from_contributions(self.contribs)
+        _append_affiliation_data_fields(headers, rows, self.contribs)
+        return headers, rows
+
+
+class RHContributionsExportCSV(RHContributionsExportBase):
+    def _process(self):
+        return send_csv('contributions.csv', *self._generate_spreadsheet())
+
+
+class RHContributionsExportExcel(RHContributionsExportBase):
+    def _process(self):
+        return send_xlsx('contributions.xlsx', *self._generate_spreadsheet())
