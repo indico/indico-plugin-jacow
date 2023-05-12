@@ -101,9 +101,21 @@ class RHAbstractsStats(RHManageEventBase):
             question_counts[question] = {}
             for user in reviewers:
                 question_counts[question][user] = _get_question_counts(question, user)
+
+        abstracts_in_tracks_attrs = {
+            'submitted_for': lambda t: len(t.abstracts_submitted),
+            'moved_to': lambda t: len(t.abstracts_reviewed - t.abstracts_submitted),
+            'final_proposals': lambda t: len(t.abstracts_reviewed),
+        }
+        abstracts_in_tracks = {track: {k: v(track) for k, v in abstracts_in_tracks_attrs.items()}
+                               for track in self.event.tracks}
+        abstracts_in_tracks.update({group: {k: sum(abstracts_in_tracks[track][k] for track in group.tracks)
+                                            for k in abstracts_in_tracks_attrs}
+                                    for group in self.event.track_groups})
         return WPAbstractsStats.render_template('abstracts_stats.html', self.event, reviewers=reviewers,
                                                 list_items=list_items, review_counts=review_counts,
-                                                questions=questions, question_counts=question_counts)
+                                                questions=questions, question_counts=question_counts,
+                                                abstracts_in_tracks=abstracts_in_tracks)
 
 
 def _append_affiliation_data_fields(headers, rows, items):

@@ -19,9 +19,9 @@
                 <th class="i-table" rowspan="2">{% trans %}Reviewer{% endtrans %}</th>
                 {% for item in list_items -%}
                     {% if item.is_track_group %}
-                        <th class="i-table" colspan="{{ item.tracks|length + 1 }}">{{ item.code if item.code else item.title }}</th>
+                        <th class="i-table" colspan="{{ item.tracks|length + 1 }}">{{ item.code or item.title }}</th>
                     {% else %}
-                        <th class="i-table" rowspan="2">{{ item.code if item.code else item.title }}</th>
+                        <th class="i-table" rowspan="2">{{ item.code or item.title }}</th>
                     {% endif %}
                 {%- else -%}
                     <th class="i-table" rowspan="2">{% trans %}Number of reviews{% endtrans %}</th>
@@ -64,6 +64,7 @@
 {% endmacro %}
 
 {% block content %}
+    <h2>{% trans %}Summary of reviews{% endtrans %}</h2>
     <h3>{% trans %}Number of reviews per track{% endtrans %}</h3>
     {% if reviewers and list_items %}
         {{ _render_stats_table(review_counts) }}
@@ -74,4 +75,48 @@
         <h3>{% trans title=question.title %}Positive answers to question "{{ title }}"{% endtrans %}</h3>
         {{ _render_stats_table(question_counts[question]) }}
     {% endfor %}
+
+    <h2>{% trans %}Abstracts in tracks{% endtrans %}</h2>
+    {% if list_items %}
+        <table class="i-table-widget tablesorter">
+            <thead>
+                <tr class="i-table">
+                    <th class="i-table" colspan="2">{% trans %}Track{% endtrans %}</th>
+                    <th class="i-table">{% trans %}Originally submitted for{% endtrans %}</th>
+                    <th class="i-table">{% trans %}Moved into{% endtrans %}</th>
+                    <th class="i-table">{% trans %}Final proposals{% endtrans %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in list_items -%}
+                    {% if item.is_track_group %}
+                        <tr class="i-table">
+                            <td class="i-table" rowspan="{{ item.tracks|length + 1 }}">{{ item.code or item.title }}</td>
+                            <td class="i-table">{% trans %}Subtotal{% endtrans %}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].submitted_for }}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].moved_to }}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].final_proposals }}</td>
+                        </tr>
+                        {% for track in item.tracks -%}
+                            <tr class="i-table">
+                                <td class="i-table">{{ track.code or track.title }}</td>
+                                <td class="i-table">{{ abstracts_in_tracks[track].submitted_for }}</td>
+                                <td class="i-table">{{ abstracts_in_tracks[track].moved_to }}</td>
+                                <td class="i-table">{{ abstracts_in_tracks[track].final_proposals }}</td>
+                            </tr>
+                        {%- endfor %}
+                    {% else %}
+                        <tr class="i-table">
+                            <td class="i-table" colspan="2">{{ item.code or item.title }}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].submitted_for }}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].moved_to }}</td>
+                            <td class="i-table">{{ abstracts_in_tracks[item].final_proposals }}</td>
+                        </tr>
+                    {% endif %}
+                {%- endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        {%- trans %}No tracks have been created yet.{% endtrans -%}
+    {% endif %}
 {% endblock %}
