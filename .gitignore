@@ -12,3 +12,4 @@ build/
 wheelhouse/
 .cache/
 .indico_source
+.venv/
