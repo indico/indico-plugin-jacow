@@ -11,6 +11,8 @@ from wtforms.fields import BooleanField
 
 from indico.core import signals
 from indico.core.plugins import IndicoPlugin, url_for_plugin
+from indico.modules.events.abstracts.views import WPDisplayCallForAbstracts
+from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
@@ -43,6 +45,10 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('contribution-list-options', self.inject_contribution_export_button)
         self.connect(signals.event.sidemenu, self.extend_event_menu)
         self.connect(signals.menu.items, self.add_sidemenu_item, sender='event-management-sidemenu')
+        self.inject_bundle('main.js', WPDisplayCallForAbstracts)
+        self.inject_bundle('main.js', WPContributions)
+        self.inject_bundle('main.js', WPManageContributions)
+        self.inject_bundle('main.js', WPMyContributions)
 
     def inject_abstract_export_button(self, event=None):
         return render_plugin_template('export_button.html',
