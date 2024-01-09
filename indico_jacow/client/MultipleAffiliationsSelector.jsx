@@ -10,7 +10,7 @@ import searchAffiliationURL from 'indico-url:users.api_affiliations';
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import {useFormState} from 'react-final-form';
-import {Dropdown, Icon, Header} from 'semantic-ui-react';
+import {Dropdown, Icon, IconGroup, Header} from 'semantic-ui-react';
 
 import {FinalField, FormFieldAdapter} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
@@ -153,20 +153,31 @@ MultipleAffiliationsSelector.propTypes = {
   modalOpen: PropTypes.string.isRequired,
 };
 
-export const MultipleAffiliationsButton = ({onEdit}) => (
-  <Icon
-    //styleName="button edit"
-    name="building"
-    title={Translate.string('Edit affiliations')}
-    size="large"
-    color="grey"
-    onClick={() => onEdit('jacow_affiliations')}
-    link
-  />
+export const MultipleAffiliationsButton = ({person, onEdit, disabled}) => (
+  <IconGroup size="large">
+    <Icon
+      name="building"
+      title={Translate.string('Edit affiliations')}
+      color={person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'}
+      onClick={() => onEdit('jacow_affiliations')}
+      disabled={disabled}
+      link
+    />
+    {!person.jacowAffiliationsIds && (
+      <Icon
+        name="exclamation circle"
+        title={Translate.string('No affiliations added')}
+        color="red"
+        corner="top right"
+      />
+    )}
+  </IconGroup>
 );
 
 MultipleAffiliationsButton.propTypes = {
+  person: PropTypes.object.isRequired,
   onEdit: PropTypes.func.isRequired,
+  disabled: PropTypes.bool.isRequired,
 };
 
 export const customFields = ['jacowAffiliationsIds'];

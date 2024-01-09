@@ -12,7 +12,9 @@ from wtforms.fields import BooleanField
 from indico.core import signals
 from indico.core.db import db
 from indico.core.plugins import IndicoPlugin, url_for_plugin
-from indico.modules.events.abstracts.views import WPDisplayCallForAbstracts
+from indico.modules.events.abstracts.forms import AbstractForm
+from indico.modules.events.abstracts.views import WPDisplayAbstracts, WPDisplayCallForAbstracts, WPManageAbstracts
+from indico.modules.events.contributions.forms import ContributionForm
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
 from indico.modules.events.persons.schemas import PersonLinkSchema
@@ -22,7 +24,7 @@ from indico.web.forms.widgets import SwitchWidget
 from indico.web.menu import SideMenuItem
 
 from indico_jacow.blueprint import blueprint
-from indico_jacow.models.affiliations import MultipleAffiliations
+from indico_jacow.models.affiliations import AbstractAffiliations, ContributionAffiliations
 
 
 class SettingsForm(IndicoForm):
@@ -47,12 +49,14 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('abstract-list-options', self._inject_abstract_export_button)
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
-        self.connect(signals.event.person_link_updated, self._handle_person_link_updated)
+        self.connect(signals.core.form_validated, self._form_validated)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load)
+        self.inject_bundle('main.js', WPDisplayAbstracts)
         self.inject_bundle('main.js', WPDisplayCallForAbstracts)
         self.inject_bundle('main.js', WPContributions)
+        self.inject_bundle('main.js', WPManageAbstracts)
         self.inject_bundle('main.js', WPManageContributions)
         self.inject_bundle('main.js', WPMyContributions)
 
@@ -69,13 +73,29 @@ class JACOWPlugin(IndicoPlugin):
     def _inject_custom_affiliation(self, person=None):
         return render_plugin_template('custom_affiliation.html', person=person)
 
-    def _handle_person_link_updated(self, person_link=None, **kwargs):
+    def _form_validated(self, form, **kwargs):
+        context = None
+        if isinstance(form, ContributionForm):
+            context = 'contribution'
+        elif isinstance(form, AbstractForm):
+            context = 'abstract'
+        if not context:
+            return
         jacow_affiliations_data = g.pop('jacow_affiliations_data', None)
         if not jacow_affiliations_data:
             return
-        affiliation_ids = jacow_affiliations_data.get('jacow_affiliations_ids', [])
-        # XXX: this only works for contributionPersonLinks, gotta find a more general solution
-        person_link.affiliations = [MultipleAffiliations(affiliation_id=id) for id in affiliation_ids]
+        person_links = form.person_link_data.data if context == 'contribution' else form.person_links.data
+        for person_link in person_links:
+            if person_link.person_id not in jacow_affiliations_data:
+                return
+            if 'jacow_affiliations_ids' not in jacow_affiliations_data[person_link.person_id]:
+                person_links.errors.append(_('No affiliations were set for {author_name}')
+                                           .format(author_name=person_link.name))
+                return False
+        affiliations_cls = ContributionAffiliations if context == 'contribution' else AbstractAffiliations
+        for person_link in person_links:
+            affiliation_ids = jacow_affiliations_data[person_link.person_id]['jacow_affiliations_ids']
+            person_link.affiliations = [affiliations_cls(affiliation_id=id) for id in affiliation_ids]
         db.session.flush()
 
     def _extend_event_menu(self, sender, **kwargs):
@@ -98,7 +118,10 @@ class JACOWPlugin(IndicoPlugin):
         if not issubclass(schema, PersonLinkSchema):
             return
         jacow_data = {k: data.pop(k) for k in list(data) if k.startswith('jacow_')}
-        g.jacow_affiliations_data = jacow_data
+        if hasattr(g, 'jacow_affiliations_data'):
+            g.jacow_affiliations_data[data['person_id']] = jacow_data
+        else:
+            g.jacow_affiliations_data = {data['person_id']: jacow_data}
         # TODO: load the data from the db onto the schema.. maybe in the post_load?
 
     def get_blueprints(self):

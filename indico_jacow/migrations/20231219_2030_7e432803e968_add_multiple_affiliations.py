@@ -21,16 +21,26 @@ depends_on = None
 def upgrade():
     op.execute(CreateSchema('plugin_jacow'))
     op.create_table(
-        'multiple_affiliations',
+        'abstract_affiliations',
         sa.Column('person_link_id', sa.Integer(), nullable=False),
         sa.Column('affiliation_id', sa.Integer(), nullable=False),
-        sa.PrimaryKeyConstraint('person_link_id', 'affiliation_id'),
-        sa.ForeignKeyConstraint(['person_link_id'], ['events.contribution_person_links.id']),
         sa.ForeignKeyConstraint(['affiliation_id'], ['indico.affiliations.id']),
+        sa.ForeignKeyConstraint(['person_link_id'], ['event_abstracts.abstract_person_links.id']),
+        sa.PrimaryKeyConstraint('person_link_id', 'affiliation_id'),
+        schema='plugin_jacow'
+    )
+    op.create_table(
+        'contribution_affiliations',
+        sa.Column('person_link_id', sa.Integer(), nullable=False),
+        sa.Column('affiliation_id', sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(['affiliation_id'], ['indico.affiliations.id']),
+        sa.ForeignKeyConstraint(['person_link_id'], ['events.contribution_person_links.id']),
+        sa.PrimaryKeyConstraint('person_link_id', 'affiliation_id'),
         schema='plugin_jacow'
     )
 
 
 def downgrade():
-    op.drop_table('multiple_affiliations', schema='plugin_jacow')
+    op.drop_table('contribution_affiliations', schema='plugin_jacow')
+    op.drop_table('abstract_affiliations', schema='plugin_jacow')
     op.execute(DropSchema('plugin_jacow'))
