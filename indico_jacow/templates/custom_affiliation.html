@@ -1,0 +1,14 @@
+{{ person }}
+{% for affiliation in person.affiliations -%}
+    {%- set uuid = uuid() -%}
+    <span id="affiliation-popup-container-{{ uuid }}">{#--#}
+        <span id="affiliation-popup-{{ uuid }}"></span>{#--#}
+        <span>{{ affiliation.details.name }}</span>{#--#}
+    </span>{#--#}
+    <script>
+        setupAffiliationPopup(
+            {{ uuid|tojson }},
+            {{ affiliation.details|tojson }}
+        );
+    </script>
+{%- endfor %}

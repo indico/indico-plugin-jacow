@@ -5,21 +5,24 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
-from flask import session
+from flask import g, session
 from flask_pluginengine import render_plugin_template
 from wtforms.fields import BooleanField
 
 from indico.core import signals
+from indico.core.db import db
 from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.modules.events.abstracts.views import WPDisplayCallForAbstracts
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
+from indico.modules.events.persons.schemas import PersonLinkSchema
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.widgets import SwitchWidget
 from indico.web.menu import SideMenuItem
 
 from indico_jacow.blueprint import blueprint
+from indico_jacow.models.affiliations import MultipleAffiliations
 
 
 class SettingsForm(IndicoForm):
@@ -41,26 +44,41 @@ class JACOWPlugin(IndicoPlugin):
 
     def init(self):
         super().init()
-        self.template_hook('abstract-list-options', self.inject_abstract_export_button)
-        self.template_hook('contribution-list-options', self.inject_contribution_export_button)
-        self.connect(signals.event.sidemenu, self.extend_event_menu)
-        self.connect(signals.menu.items, self.add_sidemenu_item, sender='event-management-sidemenu')
+        self.template_hook('abstract-list-options', self._inject_abstract_export_button)
+        self.template_hook('contribution-list-options', self._inject_contribution_export_button)
+        self.template_hook('custom-affiliation', self._inject_custom_affiliation)
+        self.connect(signals.event.person_link_updated, self._handle_person_link_updated)
+        self.connect(signals.event.sidemenu, self._extend_event_menu)
+        self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
+        self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load)
         self.inject_bundle('main.js', WPDisplayCallForAbstracts)
         self.inject_bundle('main.js', WPContributions)
         self.inject_bundle('main.js', WPManageContributions)
         self.inject_bundle('main.js', WPMyContributions)
 
-    def inject_abstract_export_button(self, event=None):
+    def _inject_abstract_export_button(self, event=None):
         return render_plugin_template('export_button.html',
                                       csv_url=url_for_plugin('jacow.abstracts_csv_export_custom', event),
                                       xlsx_url=url_for_plugin('jacow.abstracts_xlsx_export_custom', event))
 
-    def inject_contribution_export_button(self, event=None):
+    def _inject_contribution_export_button(self, event=None):
         return render_plugin_template('export_button.html',
                                       csv_url=url_for_plugin('jacow.contributions_csv_export_custom', event),
                                       xlsx_url=url_for_plugin('jacow.contributions_xlsx_export_custom', event))
 
-    def extend_event_menu(self, sender, **kwargs):
+    def _inject_custom_affiliation(self, person=None):
+        return render_plugin_template('custom_affiliation.html', person=person)
+
+    def _handle_person_link_updated(self, person_link=None, **kwargs):
+        jacow_affiliations_data = g.pop('jacow_affiliations_data', None)
+        if not jacow_affiliations_data:
+            return
+        affiliation_ids = jacow_affiliations_data.get('jacow_affiliations_ids', [])
+        # XXX: this only works for contributionPersonLinks, gotta find a more general solution
+        person_link.affiliations = [MultipleAffiliations(affiliation_id=id) for id in affiliation_ids]
+        db.session.flush()
+
+    def _extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):
             if not session.user or not event.has_feature('abstracts'):
                 return False
@@ -70,11 +88,18 @@ class JACOWPlugin(IndicoPlugin):
                              endpoint='jacow.reviewer_stats', position=1, parent='call_for_abstracts',
                              visible=_statistics_visible)
 
-    def add_sidemenu_item(self, sender, event, **kwargs):
+    def _add_sidemenu_item(self, sender, event, **kwargs):
         if not event.can_manage(session.user) or not event.has_feature('abstracts'):
             return
         return SideMenuItem('abstracts_stats', _('CfA Statistics'),
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
+
+    def _person_link_schema_pre_load(self, schema, data, **kwargs):
+        if not issubclass(schema, PersonLinkSchema):
+            return
+        jacow_data = {k: data.pop(k) for k in list(data) if k.startswith('jacow_')}
+        g.jacow_affiliations_data = jacow_data
+        # TODO: load the data from the db onto the schema.. maybe in the post_load?
 
     def get_blueprints(self):
         return blueprint

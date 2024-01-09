@@ -114,9 +114,9 @@ export default function MultipleAffiliationsSelector({
 }) {
   const onSubmit = ({affiliationsData}) => {
     const value = persons[selected];
-    value.jacowAffiliations = affiliationsData.map(x => x.text.trim());
     value.jacowAffiliationsIds = affiliationsData.map(x => x.id);
     value.jacowAffiliationsMeta = affiliationsData.map(x => x.meta);
+    value.affiliation = affiliationsData.map(x => x.text.trim()).join(', ');
     onChange(persons.map((v, idx) => (idx === selected ? value : v)));
     onClose();
   };
@@ -168,3 +168,5 @@ export const MultipleAffiliationsButton = ({onEdit}) => (
 MultipleAffiliationsButton.propTypes = {
   onEdit: PropTypes.func.isRequired,
 };
+
+export const customFields = ['jacowAffiliationsIds'];

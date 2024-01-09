@@ -35,7 +35,12 @@ class MultipleAffiliations(db.Model):
         uselist=False,
         lazy=False,
         backref=db.backref(
-            'affiliations',
+            'multiple_affiliations',
             uselist=True
         )
     )
+
+    @property
+    def details(self):
+        from indico.modules.users.schemas import AffiliationSchema
+        return AffiliationSchema().dump(self.affiliation)
