@@ -1,5 +1,5 @@
 // This file is part of the JACoW plugin.
-// Copyright (C) 2014 - 2023 CERN
+// Copyright (C) 2014 - 2024 CERN
 //
 // The CERN Indico plugins are free software; you can redistribute
 // them and/or modify them under the terms of the MIT License; see
@@ -157,13 +157,17 @@ export const MultipleAffiliationsButton = ({person, onEdit, disabled}) => (
   <IconGroup size="large">
     <Icon
       name="building"
-      title={Translate.string('Edit affiliations')}
+      title={
+        person.email
+          ? Translate.string('Edit affiliations')
+          : Translate.string('Affiliations are not supported for persons without an email address')
+      }
       color={person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'}
       onClick={() => onEdit('jacow_affiliations')}
-      disabled={disabled}
-      link
+      disabled={disabled || !person.email}
+      link={!(disabled || !person.email)}
     />
-    {!person.jacowAffiliationsIds && (
+    {!person.jacowAffiliationsIds && person.email && (
       <Icon
         name="exclamation circle"
         title={Translate.string('No affiliations added')}

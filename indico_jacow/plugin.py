@@ -13,7 +13,7 @@ from indico.core import signals
 from indico.core.db import db
 from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.modules.events.abstracts.forms import AbstractForm
-from indico.modules.events.abstracts.views import WPDisplayAbstracts, WPDisplayCallForAbstracts, WPManageAbstracts
+from indico.modules.events.abstracts.views import WPDisplayAbstracts, WPManageAbstracts
 from indico.modules.events.contributions.forms import ContributionForm
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
@@ -52,10 +52,10 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.core.form_validated, self._form_validated)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
-        self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load)
-        self.inject_bundle('main.js', WPDisplayAbstracts)
-        self.inject_bundle('main.js', WPDisplayCallForAbstracts)
+        self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
+        self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
         self.inject_bundle('main.js', WPContributions)
+        self.inject_bundle('main.js', WPDisplayAbstracts)
         self.inject_bundle('main.js', WPManageAbstracts)
         self.inject_bundle('main.js', WPManageContributions)
         self.inject_bundle('main.js', WPMyContributions)
@@ -85,17 +85,13 @@ class JACOWPlugin(IndicoPlugin):
         if not jacow_affiliations_data:
             return
         person_links = form.person_link_data.data if context == 'contribution' else form.person_links.data
-        for person_link in person_links:
-            if person_link.person_id not in jacow_affiliations_data:
-                return
-            if 'jacow_affiliations_ids' not in jacow_affiliations_data[person_link.person_id]:
-                person_links.errors.append(_('No affiliations were set for {author_name}')
-                                           .format(author_name=person_link.name))
-                return False
         affiliations_cls = ContributionAffiliations if context == 'contribution' else AbstractAffiliations
         for person_link in person_links:
-            affiliation_ids = jacow_affiliations_data[person_link.person_id]['jacow_affiliations_ids']
-            person_link.affiliations = [affiliations_cls(affiliation_id=id) for id in affiliation_ids]
+            person_data = jacow_affiliations_data.get(person_link.person.identifier)
+            if person_data is None:
+                continue
+            person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id)
+                                              for id in person_data['jacow_affiliations_ids']]
         db.session.flush()
 
     def _extend_event_menu(self, sender, **kwargs):
@@ -114,15 +110,23 @@ class JACOWPlugin(IndicoPlugin):
         return SideMenuItem('abstracts_stats', _('CfA Statistics'),
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
 
-    def _person_link_schema_pre_load(self, schema, data, **kwargs):
-        if not issubclass(schema, PersonLinkSchema):
-            return
+    def _person_link_schema_pre_load(self, sender, data, **kwargs):
         jacow_data = {k: data.pop(k) for k in list(data) if k.startswith('jacow_')}
+        identifier = data.get('identifier')
+        if identifier is None:
+            if 'person_id' not in data:
+                # XXX: we do not support manually entered persons for now
+                return
+            identifier = f"EventPerson:{data['person_id']}"
         if hasattr(g, 'jacow_affiliations_data'):
-            g.jacow_affiliations_data[data['person_id']] = jacow_data
+            g.jacow_affiliations_data[identifier] = jacow_data
         else:
-            g.jacow_affiliations_data = {data['person_id']: jacow_data}
-        # TODO: load the data from the db onto the schema.. maybe in the post_load?
+            g.jacow_affiliations_data = {identifier: jacow_data}
+
+    def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
+        for person, person_link in zip(data, orig):
+            person['jacow_affiliations_ids'] = [ja.affiliation.id for ja in person_link.jacow_affiliations]
+            person['jacow_affiliations_meta'] = [ja.details for ja in person_link.jacow_affiliations]
 
     def get_blueprints(self):
         return blueprint
