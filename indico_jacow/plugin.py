@@ -50,6 +50,7 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
         self.connect(signals.core.form_validated, self._form_validated)
+        self.connect(signals.event.abstract_accepted, self._abstract_accepted)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
@@ -92,6 +93,13 @@ class JACOWPlugin(IndicoPlugin):
                 continue
             person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id)
                                               for id in person_data['jacow_affiliations_ids']]
+        db.session.flush()
+
+    def _abstract_accepted(self, abstract, contribution, **kwargs):
+        for contrib_person in contribution.person_links:
+            abstract_person = next(pl for pl in abstract.person_links if pl.person == contrib_person.person)
+            contrib_person.jacow_affiliations = [ContributionAffiliations(affiliation_id=ja.affiliation.id)
+                                                 for ja in abstract_person.jacow_affiliations]
         db.session.flush()
 
     def _extend_event_menu(self, sender, **kwargs):
