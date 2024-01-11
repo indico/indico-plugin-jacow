@@ -88,7 +88,7 @@ class JACOWPlugin(IndicoPlugin):
         person_links = form.person_link_data.data if context == 'contribution' else form.person_links.data
         affiliations_cls = ContributionAffiliations if context == 'contribution' else AbstractAffiliations
         for person_link in person_links:
-            person_data = jacow_affiliations_data.get(person_link.person.identifier)
+            person_data = jacow_affiliations_data.get(person_link.person.email)
             if person_data is None:
                 continue
             person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id)
@@ -120,16 +120,13 @@ class JACOWPlugin(IndicoPlugin):
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         jacow_data = {k: data.pop(k) for k in list(data) if k.startswith('jacow_')}
-        identifier = data.get('identifier')
-        if identifier is None:
-            if 'person_id' not in data:
-                # XXX: we do not support manually entered persons for now
-                return
-            identifier = f"EventPerson:{data['person_id']}"
+        if not data.get('email'):
+            # XXX: we do not support affiliations for persons without email for now
+            return
         if hasattr(g, 'jacow_affiliations_data'):
-            g.jacow_affiliations_data[identifier] = jacow_data
+            g.jacow_affiliations_data[data['email']] = jacow_data
         else:
-            g.jacow_affiliations_data = {identifier: jacow_data}
+            g.jacow_affiliations_data = {data['email']: jacow_data}
 
     def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
         for person, person_link in zip(data, orig):

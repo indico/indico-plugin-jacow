@@ -10,7 +10,7 @@ import searchAffiliationURL from 'indico-url:users.api_affiliations';
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import {useFormState} from 'react-final-form';
-import {Dropdown, Icon, IconGroup, Header} from 'semantic-ui-react';
+import {Dropdown, Icon, IconGroup, Header, Popup} from 'semantic-ui-react';
 
 import {FinalField, FormFieldAdapter} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
@@ -154,28 +154,32 @@ MultipleAffiliationsSelector.propTypes = {
 };
 
 export const MultipleAffiliationsButton = ({person, onEdit, disabled}) => (
-  <IconGroup size="large">
-    <Icon
-      name="building"
-      title={
-        person.email
-          ? Translate.string('Edit affiliations')
-          : Translate.string('Affiliations are not supported for persons without an email address')
-      }
-      color={person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'}
-      onClick={() => onEdit('jacow_affiliations')}
-      disabled={disabled || !person.email}
-      link={!(disabled || !person.email)}
-    />
-    {!person.jacowAffiliationsIds && person.email && (
-      <Icon
-        name="exclamation circle"
-        title={Translate.string('No affiliations added')}
-        color="red"
-        corner="top right"
-      />
-    )}
-  </IconGroup>
+  <Popup
+    content={Translate.string('Edit affiliations')}
+    disabled={disabled || !person.email}
+    trigger={
+      <IconGroup size="large">
+        <Icon
+          name="building"
+          color={
+            person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'
+          }
+          onClick={() => onEdit('jacow_affiliations')}
+          disabled={disabled || !person.email}
+          link={!(disabled || !person.email)}
+        />
+        {!person.jacowAffiliationsIds && (
+          <Icon
+            name="exclamation circle"
+            title={Translate.string('No affiliations added')}
+            color="red"
+            corner="top right"
+            disabled={disabled || !person.email}
+          />
+        )}
+      </IconGroup>
+    }
+  />
 );
 
 MultipleAffiliationsButton.propTypes = {
