@@ -24,6 +24,7 @@ def upgrade():
         'abstract_affiliations',
         sa.Column('person_link_id', sa.Integer(), nullable=False),
         sa.Column('affiliation_id', sa.Integer(), nullable=False),
+        sa.Column('display_order', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['affiliation_id'], ['indico.affiliations.id']),
         sa.ForeignKeyConstraint(['person_link_id'], ['event_abstracts.abstract_person_links.id']),
         sa.PrimaryKeyConstraint('person_link_id', 'affiliation_id'),
@@ -33,9 +34,24 @@ def upgrade():
         'contribution_affiliations',
         sa.Column('person_link_id', sa.Integer(), nullable=False),
         sa.Column('affiliation_id', sa.Integer(), nullable=False),
+        sa.Column('display_order', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['affiliation_id'], ['indico.affiliations.id']),
         sa.ForeignKeyConstraint(['person_link_id'], ['events.contribution_person_links.id']),
         sa.PrimaryKeyConstraint('person_link_id', 'affiliation_id'),
+        schema='plugin_jacow'
+    )
+    op.create_index(
+        'ix_uq_abstract_affiliations_person_link_id_display_order',
+        'abstract_affiliations',
+        ['person_link_id', 'display_order'],
+        unique=True,
+        schema='plugin_jacow'
+    )
+    op.create_index(
+        'ix_uq_contribution_affiliations_person_link_id_display_order',
+        'contribution_affiliations',
+        ['person_link_id', 'display_order'],
+        unique=True,
         schema='plugin_jacow'
     )
 

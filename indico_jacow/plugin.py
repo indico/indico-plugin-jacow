@@ -86,13 +86,17 @@ class JACOWPlugin(IndicoPlugin):
         affiliations_ids = g.pop('jacow_affiliations_ids', {})
         for person_link in person_links:
             person_affiliations = affiliations_ids.get(person_link.person.email, [])
-            person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id) for id in person_affiliations]
+            person_link.jacow_affiliations = []
+            db.session.flush()
+            person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id, display_order=i)
+                                              for i, id in enumerate(person_affiliations)]
         db.session.flush()
 
     def _abstract_accepted(self, abstract, contribution, **kwargs):
         for contrib_person in contribution.person_links:
             abstract_person = next(pl for pl in abstract.person_links if pl.person == contrib_person.person)
-            contrib_person.jacow_affiliations = [ContributionAffiliations(affiliation_id=ja.affiliation.id)
+            contrib_person.jacow_affiliations = [ContributionAffiliations(affiliation_id=ja.affiliation.id,
+                                                                          display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
 

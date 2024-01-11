@@ -22,6 +22,11 @@ class MultipleAffiliationsBase(db.Model):
     person_link_cls = None
 
     @declared_attr
+    def __table_args__(cls):
+        return (db.Index(None, 'person_link_id', 'display_order', unique=True),
+                {'schema': 'plugin_jacow'})
+
+    @declared_attr
     def person_link_id(cls):
         return db.Column(
             db.ForeignKey(cls.person_link_fk),
@@ -36,6 +41,14 @@ class MultipleAffiliationsBase(db.Model):
         )
 
     @declared_attr
+    def display_order(cls):
+        return db.Column(
+            db.Integer,
+            nullable=False,
+            default=0
+        )
+
+    @declared_attr
     def person_link(cls):
         return db.relationship(
             cls.person_link_cls,
@@ -43,6 +56,7 @@ class MultipleAffiliationsBase(db.Model):
             lazy=False,
             backref=db.backref(
                 'jacow_affiliations',
+                order_by=cls.display_order,
                 cascade='all, delete-orphan',
                 uselist=True
             )
@@ -69,7 +83,6 @@ class MultipleAffiliationsBase(db.Model):
 
 class AbstractAffiliations(MultipleAffiliationsBase):
     __tablename__ = 'abstract_affiliations'
-    __table_args__ = {'schema': 'plugin_jacow'}
     affiliations_backref_name = 'jacow_abstract_affiliations'
     person_link_fk = 'event_abstracts.abstract_person_links.id'
     person_link_cls = 'AbstractPersonLink'
@@ -77,7 +90,6 @@ class AbstractAffiliations(MultipleAffiliationsBase):
 
 class ContributionAffiliations(MultipleAffiliationsBase):
     __tablename__ = 'contribution_affiliations'
-    __table_args__ = {'schema': 'plugin_jacow'}
     affiliations_backref_name = 'jacow_contribution_affiliations'
     person_link_fk = 'events.contribution_person_links.id'
     person_link_cls = 'ContributionPersonLink'
