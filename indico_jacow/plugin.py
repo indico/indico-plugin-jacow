@@ -75,24 +75,18 @@ class JACOWPlugin(IndicoPlugin):
         return render_plugin_template('custom_affiliation.html', person=person)
 
     def _form_validated(self, form, **kwargs):
-        context = None
         if isinstance(form, ContributionForm):
-            context = 'contribution'
+            person_links = form.person_link_data.data
+            affiliations_cls = ContributionAffiliations
         elif isinstance(form, AbstractForm):
-            context = 'abstract'
-        if not context:
+            person_links = form.person_links.data
+            affiliations_cls = AbstractAffiliations
+        else:
             return
-        jacow_affiliations_data = g.pop('jacow_affiliations_data', None)
-        if not jacow_affiliations_data:
-            return
-        person_links = form.person_link_data.data if context == 'contribution' else form.person_links.data
-        affiliations_cls = ContributionAffiliations if context == 'contribution' else AbstractAffiliations
+        affiliations_ids = g.pop('jacow_affiliations_ids', {})
         for person_link in person_links:
-            person_data = jacow_affiliations_data.get(person_link.person.email)
-            if person_data is None:
-                continue
-            person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id)
-                                              for id in person_data['jacow_affiliations_ids']]
+            person_affiliations = affiliations_ids.get(person_link.person.email, [])
+            person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id) for id in person_affiliations]
         db.session.flush()
 
     def _abstract_accepted(self, abstract, contribution, **kwargs):
@@ -119,14 +113,13 @@ class JACOWPlugin(IndicoPlugin):
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
-        jacow_data = {k: data.pop(k) for k in list(data) if k.startswith('jacow_')}
         if not data.get('email'):
             # XXX: we do not support affiliations for persons without email for now
             return
-        if hasattr(g, 'jacow_affiliations_data'):
-            g.jacow_affiliations_data[data['email']] = jacow_data
+        if hasattr(g, 'jacow_affiliations_ids'):
+            g.jacow_affiliations_ids[data['email']] = data.get('jacow_affiliations_ids', [])
         else:
-            g.jacow_affiliations_data = {data['email']: jacow_data}
+            g.jacow_affiliations_ids = {data['email']: data.get('jacow_affiliations_ids', [])}
 
     def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
         for person, person_link in zip(data, orig):
