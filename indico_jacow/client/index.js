@@ -10,6 +10,7 @@ import {registerPluginComponent, registerPluginObject} from 'indico/utils/plugin
 import MultipleAffiliationsSelector, {
   MultipleAffiliationsButton,
   customFields,
+  onAddPersonLink,
 } from './MultipleAffiliationsSelector';
 
 const PLUGIN_NAME = 'jacow';
@@ -17,3 +18,4 @@ const PLUGIN_NAME = 'jacow';
 registerPluginComponent(PLUGIN_NAME, 'personListItemActions', MultipleAffiliationsButton);
 registerPluginComponent(PLUGIN_NAME, 'personLinkFieldModals', MultipleAffiliationsSelector);
 registerPluginObject(PLUGIN_NAME, 'personLinkCustomFields', customFields);
+registerPluginObject(PLUGIN_NAME, 'onAddPersonLink', onAddPersonLink);

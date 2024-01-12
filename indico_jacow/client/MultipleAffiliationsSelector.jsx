@@ -189,3 +189,10 @@ MultipleAffiliationsButton.propTypes = {
 };
 
 export const customFields = ['jacowAffiliationsIds'];
+
+export const onAddPersonLink = person => {
+  if (!person.jacowAffiliationsIds && person.affiliationId) {
+    person.jacowAffiliationsIds = [person.affiliationId];
+    person.jacowAffiliationsMeta = [person.affiliationMeta];
+  }
+};
