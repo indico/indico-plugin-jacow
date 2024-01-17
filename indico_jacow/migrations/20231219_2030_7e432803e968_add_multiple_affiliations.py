@@ -6,7 +6,7 @@ Create Date: 2023-12-19 20:30:41.318370
 """
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 from sqlalchemy.sql.ddl import CreateSchema, DropSchema
 
@@ -19,6 +19,9 @@ depends_on = None
 
 
 def upgrade():
+    if context.is_offline_mode():
+        raise Exception('This upgrade is only possible in online mode')
+
     op.execute(CreateSchema('plugin_jacow'))
     op.create_table(
         'abstract_affiliations',
@@ -54,6 +57,16 @@ def upgrade():
         unique=True,
         schema='plugin_jacow'
     )
+
+    # Populate tables with the current affiliations
+    conn = op.get_bind()
+    for target, source in (('abstract_affiliations', 'event_abstracts.abstract_person_links'),
+                           ('contribution_affiliations', 'events.contribution_person_links')):
+        conn.execute(f'''
+            INSERT INTO plugin_jacow.{target} (person_link_id, affiliation_id, display_order)
+            SELECT id, affiliation_id, 0 FROM {source} pl
+            WHERE pl.affiliation_id IS NOT NULL
+        ''')
 
 
 def downgrade():
