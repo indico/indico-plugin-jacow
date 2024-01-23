@@ -9,66 +9,74 @@ import searchAffiliationURL from 'indico-url:users.api_affiliations';
 
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
-import {useFormState} from 'react-final-form';
-import {Dropdown, Icon, IconGroup, Header, Popup} from 'semantic-ui-react';
+import {DndProvider} from 'react-dnd';
+import {HTML5Backend} from 'react-dnd-html5-backend';
+import {Dropdown, Header, Icon, IconGroup, List, Popup, Ref, Segment} from 'semantic-ui-react';
 
-import {FinalField, FormFieldAdapter} from 'indico/react/forms';
+import {FinalField} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
+import {SortableWrapper, useSortableItem} from 'indico/react/sortable';
 import {indicoAxios, handleAxiosError} from 'indico/utils/axios';
 import {camelizeKeys} from 'indico/utils/case';
 import {makeAsyncDebounce} from 'indico/utils/debounce';
 
 import {Translate} from './i18n';
 
+import './MultipleAffiliationsSelector.module.scss';
+
 const debounce = makeAsyncDebounce(250);
 
-const AffiliationsFieldAdapter = ({options, ...rest}) => (
-  <FormFieldAdapter
-    options={options}
-    {...rest}
-    as={Dropdown}
-    clearable
-    multiple
-    search
-    selection
-    fluid
-    undefinedValue={null}
-    selectOnBlur={false}
-    selectOnNavigation={false}
-    getValue={(__, {value}) =>
-      options
-        .filter(opt => value.includes(opt.value))
-        .map(opt => ({
-          id: opt.value,
-          text: opt.text,
-          meta: opt.meta,
-        }))
-    }
-  />
-);
-
-AffiliationsFieldAdapter.propTypes = {
-  options: PropTypes.array.isRequired,
+const affiliationShape = {
+  id: PropTypes.number.isRequired,
+  text: PropTypes.string.isRequired,
+  meta: PropTypes.object.isRequired,
 };
 
-const FinalMultipleAffiliationField = () => {
-  const formState = useFormState();
-  const currentAffiliations = formState.values.jacowAffiliationsMeta || [];
-  const selectedAffiliations = formState.values.affiliationsData.map(x => x.meta);
-  const [_affiliationResults, setAffiliationResults] = useState(selectedAffiliations);
-  const affiliationResults = [
+const getSubheader = ({city, countryName}) => {
+  if (city && countryName) {
+    return `${city}, ${countryName}`;
+  }
+  return city || countryName;
+};
+
+const DraggableAffiliation = ({affiliation, onDelete, index, onMove}) => {
+  const [dragRef, itemRef, style] = useSortableItem({
+    type: 'affiliation',
+    index,
+    moveItem: onMove,
+    separateHandle: true,
+  });
+
+  return (
+    <div ref={itemRef} style={style} styleName="affiliation">
+      <Ref innerRef={dragRef}>
+        <div className="icon-drag-indicator" styleName="handle" />
+      </Ref>
+      <Header
+        style={{fontSize: 14}}
+        content={affiliation.meta.name}
+        subheader={getSubheader(affiliation.meta)}
+      />
+      <Icon name="remove" color="red" size="large" styleName="delete" onClick={onDelete} link />
+    </div>
+  );
+};
+
+DraggableAffiliation.propTypes = {
+  affiliation: PropTypes.shape(affiliationShape).isRequired,
+  onDelete: PropTypes.func.isRequired,
+  index: PropTypes.number.isRequired,
+  onMove: PropTypes.func.isRequired,
+};
+
+const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
+  const [_searchResults, setSearchResults] = useState([]);
+  const searchResults = [
     ...currentAffiliations,
-    ..._affiliationResults.filter(x => !currentAffiliations.find(y => y.id === x.id)),
-  ];
+    ..._searchResults.filter(x => !currentAffiliations.find(y => y.id === x.id)),
+  ].filter(x => !value.find(y => y.meta.id === x.id));
 
-  const getSubheader = ({city, countryName}) => {
-    if (city && countryName) {
-      return `${city}, ${countryName}`;
-    }
-    return city || countryName;
-  };
-
-  const affiliationOptions = affiliationResults.map(res => ({
+  const affiliationOptions = searchResults.map(res => ({
     key: res.id,
     value: res.id,
     text: res.name,
@@ -76,9 +84,9 @@ const FinalMultipleAffiliationField = () => {
     content: <Header style={{fontSize: 14}} content={res.name} subheader={getSubheader(res)} />,
   }));
 
-  const searchAffiliationChange = async (evt, {searchQuery}) => {
+  const searchChange = async (evt, {searchQuery}) => {
     if (!searchQuery) {
-      setAffiliationResults(selectedAffiliations);
+      setSearchResults([]);
       return;
     }
     let resp;
@@ -88,21 +96,64 @@ const FinalMultipleAffiliationField = () => {
       handleAxiosError(error);
       return;
     }
-    setAffiliationResults([...selectedAffiliations, ...camelizeKeys(resp.data)]);
+    setSearchResults(camelizeKeys(resp.data));
+  };
+
+  const addItem = (evt, {value: newId}) => {
+    const newValue = searchResults.find(x => x.id === newId);
+    onChange([...value, {id: newValue.id, text: newValue.name, meta: newValue}]);
+    setSearchResults([]);
+  };
+
+  const moveItem = (dragIndex, hoverIndex) => {
+    const result = value.slice();
+    result.splice(hoverIndex, 0, ...result.splice(dragIndex, 1));
+    onChange(result);
   };
 
   return (
-    <FinalField
-      name="affiliationsData"
-      adapter={AffiliationsFieldAdapter}
-      format={x => x.map(v => v.id)}
-      parse={v => v}
-      options={affiliationOptions}
-      onSearchChange={searchAffiliationChange}
-      placeholder={Translate.string('Select affiliations')}
-      noResultsMessage={Translate.string('Search an affiliation')}
-    />
+    <DndProvider backend={HTML5Backend}>
+      <Segment attached="top">
+        <SortableWrapper accept="affiliation">
+          <List divided relaxed>
+            {value.length > 0 ? (
+              value.map((affiliation, idx) => (
+                <DraggableAffiliation
+                  key={affiliation.id}
+                  index={idx}
+                  onMove={moveItem}
+                  affiliation={affiliation}
+                  onDelete={() => onChange(value.filter((_, i) => i !== idx))}
+                />
+              ))
+            ) : (
+              <Translate>There are no affiliations</Translate>
+            )}
+          </List>
+        </SortableWrapper>
+      </Segment>
+      <Segment attached="bottom">
+        <Dropdown
+          icon="search"
+          placeholder="Add affiliations..."
+          options={affiliationOptions}
+          onSearchChange={searchChange}
+          onChange={addItem}
+          onBlur={() => setSearchResults([])}
+          selectOnBlur={false}
+          search
+          selection
+          fluid
+        />
+      </Segment>
+    </DndProvider>
   );
+};
+
+MultipleAffiliationsField.propTypes = {
+  onChange: PropTypes.func.isRequired,
+  value: PropTypes.arrayOf(PropTypes.shape(affiliationShape)).isRequired,
+  currentAffiliations: PropTypes.array.isRequired,
 };
 
 export default function MultipleAffiliationsSelector({
@@ -139,7 +190,11 @@ export default function MultipleAffiliationsSelector({
             })) || [],
         }}
       >
-        <FinalMultipleAffiliationField />
+        <FinalField
+          name="affiliationsData"
+          component={MultipleAffiliationsField}
+          currentAffiliations={persons[selected].jacowAffiliationsMeta || []}
+        />
       </FinalModalForm>
     )
   );

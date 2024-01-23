@@ -1,0 +1,33 @@
+// This file is part of the JACoW plugin.
+// Copyright (C) 2014 - 2024 CERN
+//
+// The CERN Indico plugins are free software; you can redistribute
+// them and/or modify them under the terms of the MIT License; see
+// the LICENSE file for more details.
+
+.affiliation {
+    display: flex;
+    align-items: center;
+    scroll-snap-align: start;
+
+  &:first-child {
+    scroll-margin-top: 1em;
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 1em;
+  }
+  
+  .handle {
+    cursor: pointer;
+    padding: 0.5em;
+  }
+
+  .delete {
+    margin-left: auto;
+  }
+
+  :global(.header) {
+    margin: 0;
+  }
+}

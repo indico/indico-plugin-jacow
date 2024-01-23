@@ -60,6 +60,11 @@ class JACOWPlugin(IndicoPlugin):
         self.inject_bundle('main.js', WPManageAbstracts)
         self.inject_bundle('main.js', WPManageContributions)
         self.inject_bundle('main.js', WPMyContributions)
+        self.inject_bundle('main.css', WPContributions)
+        self.inject_bundle('main.css', WPDisplayAbstracts)
+        self.inject_bundle('main.css', WPManageAbstracts)
+        self.inject_bundle('main.css', WPManageContributions)
+        self.inject_bundle('main.css', WPMyContributions)
 
     def _inject_abstract_export_button(self, event=None):
         return render_plugin_template('export_button.html',
