@@ -51,6 +51,7 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
         self.connect(signals.core.form_validated, self._form_validated)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
+        self.connect(signals.event.hide_affiliation_field, self._hide_affiliation_field)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
@@ -104,6 +105,9 @@ class JACOWPlugin(IndicoPlugin):
                                                                           display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
+
+    def _hide_affiliation_field(self, sender, **kwargs):
+        return True
 
     def _extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):
