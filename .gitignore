@@ -1,6 +1,6 @@
+.vscode
 .coverage
 htmlcov/
-.vscode/
 .idea/
 *.min.css
 *.min.js
@@ -11,5 +11,12 @@ dist/
 build/
 wheelhouse/
 .cache/
+.pytest_cache/
+*.mo
+webpack-build-config.json
 .indico_source
+.jsconfig.json
+node_modules/
+*.lock
+url_map.json
 .venv/
