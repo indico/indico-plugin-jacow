@@ -1,5 +1,5 @@
 # This file is part of the JACoW plugin.
-# Copyright (C) 2021 - 2023 CERN
+# Copyright (C) 2021 - 2024 CERN
 #
 # The CERN Indico plugins are free software; you can redistribute
 # them and/or modify them under the terms of the MIT License; see
@@ -160,7 +160,7 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
         _append_affiliation_data_fields(headers, rows, self.abstracts)
 
         def get_question_column(title, value):
-            return f'Question {title} ({str(value)})'
+            return f'Question {title} ({value!s})'
 
         questions = [question for question in self.event.abstract_review_questions if not question.is_deleted]
         for question in questions:
