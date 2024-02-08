@@ -7,7 +7,6 @@ Create Date: 2023-12-19 20:30:41.318370
 
 import sqlalchemy as sa
 from alembic import context, op
-
 from sqlalchemy.sql.ddl import CreateSchema, DropSchema
 
 
@@ -66,7 +65,7 @@ def upgrade():
             INSERT INTO plugin_jacow.{target} (person_link_id, affiliation_id, display_order)
             SELECT id, affiliation_id, 0 FROM {source} pl
             WHERE pl.affiliation_id IS NOT NULL
-        ''')
+        ''')  # noqa: S608
 
 
 def downgrade():
