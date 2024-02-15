@@ -167,7 +167,7 @@ export default function MultipleAffiliationsSelector({
     const value = persons[selected];
     value.jacowAffiliationsIds = affiliationsData.map(x => x.id);
     value.jacowAffiliationsMeta = affiliationsData.map(x => x.meta);
-    value.affiliation = affiliationsData.map(x => x.text.trim()).join(', ');
+    value.affiliation = affiliationsData.map(x => x.text.trim()).join('; ');
     onChange(persons.map((v, idx) => (idx === selected ? value : v)));
     onClose();
   };
