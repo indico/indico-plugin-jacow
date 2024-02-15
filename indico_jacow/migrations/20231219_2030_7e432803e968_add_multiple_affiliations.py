@@ -54,16 +54,6 @@ def upgrade():
         schema='plugin_jacow'
     )
 
-    # Populate tables with the current affiliations
-    for target, source in (('abstract_affiliations', 'event_abstracts.abstract_person_links'),
-                           ('contribution_affiliations', 'events.contribution_person_links')):
-        op.execute(f'''
-            INSERT INTO plugin_jacow.{target} (person_link_id, affiliation_id, display_order)
-            SELECT pl.id, COALESCE(pl.affiliation_id, ep.affiliation_id), 0 FROM {source} pl
-            JOIN events.persons ep ON (ep.id = pl.person_id)
-            WHERE COALESCE(pl.affiliation_id, ep.affiliation_id) IS NOT NULL
-        ''')  # noqa: S608
-
 
 def downgrade():
     op.drop_table('contribution_affiliations', schema='plugin_jacow')

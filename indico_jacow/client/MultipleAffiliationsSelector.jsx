@@ -26,11 +26,15 @@ import './MultipleAffiliationsSelector.module.scss';
 
 const debounce = makeAsyncDebounce(250);
 
-const affiliationShape = {
+const affiliationSchema = PropTypes.shape({
   id: PropTypes.number.isRequired,
   text: PropTypes.string.isRequired,
   meta: PropTypes.object.isRequired,
-};
+});
+
+const extraParamsSchema = PropTypes.shape({
+  jacowAffiliations: PropTypes.bool,
+});
 
 const getSubheader = ({city, countryName}) => {
   if (city && countryName) {
@@ -63,7 +67,7 @@ const DraggableAffiliation = ({affiliation, onDelete, index, onMove}) => {
 };
 
 DraggableAffiliation.propTypes = {
-  affiliation: PropTypes.shape(affiliationShape).isRequired,
+  affiliation: affiliationSchema.isRequired,
   onDelete: PropTypes.func.isRequired,
   index: PropTypes.number.isRequired,
   onMove: PropTypes.func.isRequired,
@@ -152,7 +156,7 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
 
 MultipleAffiliationsField.propTypes = {
   onChange: PropTypes.func.isRequired,
-  value: PropTypes.arrayOf(PropTypes.shape(affiliationShape)).isRequired,
+  value: PropTypes.arrayOf(affiliationSchema).isRequired,
   currentAffiliations: PropTypes.array.isRequired,
 };
 
@@ -162,6 +166,7 @@ export default function MultipleAffiliationsSelector({
   onChange,
   onClose,
   modalOpen,
+  extraParams,
 }) {
   const onSubmit = ({affiliationsData}) => {
     const value = persons[selected];
@@ -173,6 +178,7 @@ export default function MultipleAffiliationsSelector({
   };
 
   return (
+    extraParams.jacowAffiliations &&
     modalOpen === 'jacow_affiliations' && (
       <FinalModalForm
         id="person-link-affiliations"
@@ -206,41 +212,48 @@ MultipleAffiliationsSelector.propTypes = {
   onChange: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   modalOpen: PropTypes.string.isRequired,
+  extraParams: extraParamsSchema.isRequired,
 };
 
-export const MultipleAffiliationsButton = ({person, onEdit, disabled}) => (
-  <Popup
-    content={Translate.string('Edit affiliations')}
-    disabled={disabled || !person.email}
-    trigger={
-      <IconGroup size="large">
-        <Icon
-          name="building"
-          color={
-            person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'
-          }
-          onClick={() => onEdit('jacow_affiliations')}
-          disabled={disabled || !person.email}
-          link={!(disabled || !person.email)}
-        />
-        {!person.jacowAffiliationsIds && (
+export function MultipleAffiliationsButton({person, onEdit, disabled, extraParams}) {
+  if (!extraParams.jacowAffiliations) {
+    return null;
+  }
+  return (
+    <Popup
+      content={Translate.string('Edit affiliations')}
+      disabled={disabled || !person.email}
+      trigger={
+        <IconGroup size="large">
           <Icon
-            name="exclamation circle"
-            title={Translate.string('No affiliations added')}
-            color="red"
-            corner="top right"
+            name="building"
+            color={
+              person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'
+            }
+            onClick={() => onEdit('jacow_affiliations')}
             disabled={disabled || !person.email}
+            link={!(disabled || !person.email)}
           />
-        )}
-      </IconGroup>
-    }
-  />
-);
+          {!person.jacowAffiliationsIds && (
+            <Icon
+              name="exclamation circle"
+              title={Translate.string('No affiliations added')}
+              color="red"
+              corner="top right"
+              disabled={disabled || !person.email}
+            />
+          )}
+        </IconGroup>
+      }
+    />
+  );
+}
 
 MultipleAffiliationsButton.propTypes = {
   person: PropTypes.object.isRequired,
   onEdit: PropTypes.func.isRequired,
   disabled: PropTypes.bool.isRequired,
+  extraParams: extraParamsSchema.isRequired,
 };
 
 export const customFields = ['jacowAffiliationsIds'];

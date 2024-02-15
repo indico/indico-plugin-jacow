@@ -12,13 +12,17 @@ from wtforms.fields import BooleanField
 from indico.core import signals
 from indico.core.db import db
 from indico.core.plugins import IndicoPlugin, url_for_plugin
+from indico.modules.events.abstracts.fields import AbstractPersonLinkListField
 from indico.modules.events.abstracts.forms import AbstractForm
 from indico.modules.events.abstracts.models.persons import AbstractPersonLink
 from indico.modules.events.abstracts.views import WPDisplayAbstracts, WPManageAbstracts
+from indico.modules.events.contributions.fields import ContributionPersonLinkListField
 from indico.modules.events.contributions.forms import ContributionForm
 from indico.modules.events.contributions.models.persons import ContributionPersonLink
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
+from indico.modules.events.models.persons import EventPerson
+from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
@@ -45,15 +49,21 @@ class JACOWPlugin(IndicoPlugin):
     default_settings = {
         'sync_enabled': False,
     }
+    default_event_settings = {
+        'multiple_affiliations': False,
+    }
 
     def init(self):
         super().init()
         self.template_hook('abstract-list-options', self._inject_abstract_export_button)
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
-        self.connect(signals.core.form_validated, self._form_validated)
+        self.connect(signals.core.add_form_fields, self._add_person_lists_settings, sender=ManagePersonListsForm)
+        self.connect(signals.core.form_validated, self._person_lists_form_validated)
+        self.connect(signals.core.form_validated, self._submission_form_validated,
+                     sender=(AbstractForm, ContributionForm))
+        self.connect(signals.core.get_field_extra_params, self._get_field_extra_params)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
-        self.connect(signals.event.hide_affiliation_field, self._hide_affiliation_field)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
@@ -72,19 +82,52 @@ class JACOWPlugin(IndicoPlugin):
                                       csv_url=url_for_plugin('jacow.contributions_csv_export_custom', event),
                                       xlsx_url=url_for_plugin('jacow.contributions_xlsx_export_custom', event))
 
-    def _inject_custom_affiliation(self, person=None):
-        if isinstance(person, (AbstractPersonLink, ContributionPersonLink)):
+    def _inject_custom_affiliation(self, person):
+        if (isinstance(person, (AbstractPersonLink, ContributionPersonLink)) and
+                self.event_settings.get(person.person.event, 'multiple_affiliations')):
             return render_plugin_template('custom_affiliation.html', person=person)
 
-    def _form_validated(self, form, **kwargs):
-        if isinstance(form, ContributionForm):
-            person_links = form.person_link_data.data
-            affiliations_cls = ContributionAffiliation
-        elif isinstance(form, AbstractForm):
+    def _add_person_lists_settings(self, form_cls, form_kwargs, **kwargs):
+        return (
+            'multiple_affiliations',
+            BooleanField(_('Multiple affiliations'), widget=SwitchWidget(),
+                         description=_('Gives submitters the ability to list multiple affiliations per author in '
+                                       'abstracts and contributions.'),
+                         default=self.event_settings.get(g.rh.event, 'multiple_affiliations'))
+        )
+
+    def _person_lists_form_validated(self, form, **kwargs):
+        if not isinstance(form, ManagePersonListsForm):
+            return
+        self.event_settings.set(g.rh.event, 'multiple_affiliations', form.ext__multiple_affiliations.data)
+        if not form.ext__multiple_affiliations.data:
+            return
+        # Populate tables with the current affiliations
+        for target, source in ((AbstractAffiliation, AbstractPersonLink),
+                               (ContributionAffiliation, ContributionPersonLink)):
+            affiliation_id = db.func.coalesce(source.affiliation_id, EventPerson.affiliation_id)
+            db.session.execute(
+                target.__table__.insert().from_select(
+                    ['person_link_id', 'affiliation_id', 'display_order'],
+                    db.select([source.id, affiliation_id, 0])
+                    .join(source.person)
+                    .filter(
+                        affiliation_id.isnot(None),
+                        EventPerson.event == g.rh.event,
+                        ~source.id.in_(db.select([target.person_link_id]))
+                    )
+                )
+            )
+
+    def _submission_form_validated(self, form, **kwargs):
+        if not self.event_settings.get(form.event, 'multiple_affiliations'):
+            return
+        if isinstance(form, AbstractForm):
             person_links = form.person_links.data
             affiliations_cls = AbstractAffiliation
         else:
-            return
+            person_links = form.person_link_data.data
+            affiliations_cls = ContributionAffiliation
         affiliations_ids = g.pop('jacow_affiliations_ids', {})
         for person_link in person_links:
             person_affiliations = affiliations_ids.get(person_link.person.email, [])
@@ -94,6 +137,11 @@ class JACOWPlugin(IndicoPlugin):
                                               for i, id in enumerate(person_affiliations)]
         db.session.flush()
 
+    def _get_field_extra_params(self, field, **kwargs):
+        if (isinstance(field, (AbstractPersonLinkListField, ContributionPersonLinkListField)) and
+                self.event_settings.get(field.event, 'multiple_affiliations')):
+            return {'disable_affiliations': True, 'jacow_affiliations': True}
+
     def _abstract_accepted(self, abstract, contribution, **kwargs):
         for contrib_person in contribution.person_links:
             abstract_person = next(pl for pl in abstract.person_links if pl.person == contrib_person.person)
@@ -101,9 +149,6 @@ class JACOWPlugin(IndicoPlugin):
                                                                          display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
-
-    def _hide_affiliation_field(self, sender, **kwargs):
-        return True
 
     def _extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):
