@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from indico.core.db.sqlalchemy import db
 
 
-class MultipleAffiliationsBase(db.Model):
+class JACoWAffiliationBase(db.Model):
     """Base class for multiple affiliations associations."""
 
     __abstract__ = True
@@ -81,14 +81,14 @@ class MultipleAffiliationsBase(db.Model):
         return AffiliationSchema().dump(self.affiliation)
 
 
-class AbstractAffiliations(MultipleAffiliationsBase):
+class AbstractAffiliation(JACoWAffiliationBase):
     __tablename__ = 'abstract_affiliations'
     affiliations_backref_name = 'jacow_abstract_affiliations'
     person_link_fk = 'event_abstracts.abstract_person_links.id'
     person_link_cls = 'AbstractPersonLink'
 
 
-class ContributionAffiliations(MultipleAffiliationsBase):
+class ContributionAffiliation(JACoWAffiliationBase):
     __tablename__ = 'contribution_affiliations'
     affiliations_backref_name = 'jacow_contribution_affiliations'
     person_link_fk = 'events.contribution_person_links.id'

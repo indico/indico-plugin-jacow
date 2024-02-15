@@ -124,7 +124,8 @@ def _append_affiliation_data_fields(headers, rows, items):
         return ', '.join(filter(None, (affiliation.street, address)))
 
     def full_name_and_data(person, data):
-        return f"{person.full_name} ({'; '.join(data)})" if data else person.full_name
+        data = '; '.join(data)
+        return f'{person.full_name} ({data})' if data else person.full_name
 
     def full_name_and_country(person):
         return full_name_and_data(person, [ja.affiliation.country_code for ja in person.jacow_affiliations])

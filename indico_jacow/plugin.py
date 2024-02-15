@@ -13,8 +13,10 @@ from indico.core import signals
 from indico.core.db import db
 from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.modules.events.abstracts.forms import AbstractForm
+from indico.modules.events.abstracts.models.persons import AbstractPersonLink
 from indico.modules.events.abstracts.views import WPDisplayAbstracts, WPManageAbstracts
 from indico.modules.events.contributions.forms import ContributionForm
+from indico.modules.events.contributions.models.persons import ContributionPersonLink
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
 from indico.modules.events.persons.schemas import PersonLinkSchema
@@ -24,7 +26,7 @@ from indico.web.forms.widgets import SwitchWidget
 from indico.web.menu import SideMenuItem
 
 from indico_jacow.blueprint import blueprint
-from indico_jacow.models.affiliations import AbstractAffiliations, ContributionAffiliations
+from indico_jacow.models.affiliations import AbstractAffiliation, ContributionAffiliation
 
 
 class SettingsForm(IndicoForm):
@@ -56,16 +58,9 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
-        self.inject_bundle('main.js', WPContributions)
-        self.inject_bundle('main.js', WPDisplayAbstracts)
-        self.inject_bundle('main.js', WPManageAbstracts)
-        self.inject_bundle('main.js', WPManageContributions)
-        self.inject_bundle('main.js', WPMyContributions)
-        self.inject_bundle('main.css', WPContributions)
-        self.inject_bundle('main.css', WPDisplayAbstracts)
-        self.inject_bundle('main.css', WPManageAbstracts)
-        self.inject_bundle('main.css', WPManageContributions)
-        self.inject_bundle('main.css', WPMyContributions)
+        wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions, WPMyContributions)
+        self.inject_bundle('main.js', wps)
+        self.inject_bundle('main.css', wps)
 
     def _inject_abstract_export_button(self, event=None):
         return render_plugin_template('export_button.html',
@@ -78,15 +73,16 @@ class JACOWPlugin(IndicoPlugin):
                                       xlsx_url=url_for_plugin('jacow.contributions_xlsx_export_custom', event))
 
     def _inject_custom_affiliation(self, person=None):
-        return render_plugin_template('custom_affiliation.html', person=person)
+        if isinstance(person, (AbstractPersonLink, ContributionPersonLink)):
+            return render_plugin_template('custom_affiliation.html', person=person)
 
     def _form_validated(self, form, **kwargs):
         if isinstance(form, ContributionForm):
             person_links = form.person_link_data.data
-            affiliations_cls = ContributionAffiliations
+            affiliations_cls = ContributionAffiliation
         elif isinstance(form, AbstractForm):
             person_links = form.person_links.data
-            affiliations_cls = AbstractAffiliations
+            affiliations_cls = AbstractAffiliation
         else:
             return
         affiliations_ids = g.pop('jacow_affiliations_ids', {})
@@ -101,8 +97,8 @@ class JACOWPlugin(IndicoPlugin):
     def _abstract_accepted(self, abstract, contribution, **kwargs):
         for contrib_person in contribution.person_links:
             abstract_person = next(pl for pl in abstract.person_links if pl.person == contrib_person.person)
-            contrib_person.jacow_affiliations = [ContributionAffiliations(affiliation_id=ja.affiliation.id,
-                                                                          display_order=ja.display_order)
+            contrib_person.jacow_affiliations = [ContributionAffiliation(affiliation_id=ja.affiliation.id,
+                                                                         display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
 

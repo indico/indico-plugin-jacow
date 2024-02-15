@@ -135,7 +135,7 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
       <Segment attached="bottom">
         <Dropdown
           icon="search"
-          placeholder="Add affiliations..."
+          placeholder={Translate.string('Add affiliations...')}
           options={affiliationOptions}
           onSearchChange={searchChange}
           onChange={addItem}
