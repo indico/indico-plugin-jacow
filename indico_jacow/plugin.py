@@ -62,7 +62,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.core.form_validated, self._person_lists_form_validated)
         self.connect(signals.core.form_validated, self._submission_form_validated,
                      sender=(AbstractForm, ContributionForm))
-        self.connect(signals.core.get_field_extra_params, self._get_field_extra_params)
+        self.connect(signals.event.person_link_field_extra_params, self._person_link_field_extra_params)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
@@ -137,9 +137,11 @@ class JACOWPlugin(IndicoPlugin):
                                               for i, id in enumerate(person_affiliations)]
         db.session.flush()
 
-    def _get_field_extra_params(self, field, **kwargs):
-        if (isinstance(field, (AbstractPersonLinkListField, ContributionPersonLinkListField)) and
-                self.event_settings.get(field.event, 'multiple_affiliations')):
+    def _person_link_field_extra_params(self, field, **kwargs):
+        if (
+            isinstance(field, (AbstractPersonLinkListField, ContributionPersonLinkListField)) and
+            self.event_settings.get(field.event, 'multiple_affiliations')
+        ):
             return {'disable_affiliations': True, 'jacow_affiliations': True}
 
     def _abstract_accepted(self, abstract, contribution, **kwargs):
