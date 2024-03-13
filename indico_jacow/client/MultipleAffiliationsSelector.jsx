@@ -177,32 +177,33 @@ export default function MultipleAffiliationsSelector({
     onClose();
   };
 
+  if (!extraParams.jacowAffiliations || modalOpen !== 'jacow_affiliations') {
+    return null;
+  }
+
   return (
-    extraParams.jacowAffiliations &&
-    modalOpen === 'jacow_affiliations' && (
-      <FinalModalForm
-        id="person-link-affiliations"
-        size="tiny"
-        onClose={onClose}
-        onSubmit={onSubmit}
-        header={Translate.string('Edit Affiliations')}
-        submitLabel={Translate.string('Save')}
-        initialValues={{
-          affiliationsData:
-            persons[selected].jacowAffiliationsMeta?.map(x => ({
-              id: x.id,
-              text: x.name,
-              meta: x,
-            })) || [],
-        }}
-      >
-        <FinalField
-          name="affiliationsData"
-          component={MultipleAffiliationsField}
-          currentAffiliations={persons[selected].jacowAffiliationsMeta || []}
-        />
-      </FinalModalForm>
-    )
+    <FinalModalForm
+      id="person-link-affiliations"
+      size="tiny"
+      onClose={onClose}
+      onSubmit={onSubmit}
+      header={Translate.string('Edit Affiliations')}
+      submitLabel={Translate.string('Save')}
+      initialValues={{
+        affiliationsData:
+          persons[selected].jacowAffiliationsMeta?.map(x => ({
+            id: x.id,
+            text: x.name,
+            meta: x,
+          })) || [],
+      }}
+    >
+      <FinalField
+        name="affiliationsData"
+        component={MultipleAffiliationsField}
+        currentAffiliations={persons[selected].jacowAffiliationsMeta || []}
+      />
+    </FinalModalForm>
   );
 }
 
