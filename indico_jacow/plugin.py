@@ -88,20 +88,21 @@ class JACOWPlugin(IndicoPlugin):
             return render_plugin_template('custom_affiliation.html', person=person)
 
     def _add_person_lists_settings(self, form_cls, form_kwargs, **kwargs):
+        multiple_affiliations = self.event_settings.get(g.rh.event, 'multiple_affiliations')
         return (
             'multiple_affiliations',
             BooleanField(_('Multiple affiliations'), widget=SwitchWidget(),
                          description=_('Gives submitters the ability to list multiple affiliations per author in '
-                                       'abstracts and contributions.'),
-                         default=self.event_settings.get(g.rh.event, 'multiple_affiliations'))
+                                       'abstracts and contributions. Once enabled, this setting cannot be disabled.'),
+                         default=multiple_affiliations, render_kw={'disabled': multiple_affiliations})
         )
 
     def _person_lists_form_validated(self, form, **kwargs):
-        if not isinstance(form, ManagePersonListsForm):
+        if (not isinstance(form, ManagePersonListsForm) or
+                not form.ext__multiple_affiliations.data or
+                self.event_settings.get(g.rh.event, 'multiple_affiliations')):
             return
-        self.event_settings.set(g.rh.event, 'multiple_affiliations', form.ext__multiple_affiliations.data)
-        if not form.ext__multiple_affiliations.data:
-            return
+        self.event_settings.set(g.rh.event, 'multiple_affiliations', True)
         # Populate tables with the current affiliations
         for target, source in ((AbstractAffiliation, AbstractPersonLink),
                                (ContributionAffiliation, ContributionPersonLink)):
