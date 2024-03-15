@@ -163,5 +163,3 @@ allow-dunder-method-names = [
 '*/*_test.py' = ['E221', 'E241', 'E272', 'N802', 'S105', 'S106', 'PLC1901']
 # allow long lines in migrations (only do that for raw SQL please)
 '*/migrations/*.py' = ['E501', 'D400']
-# piwik plugin uses too much camelcase :(
-'piwik/indico_piwik/queries/graphs.py' = ['N803']
