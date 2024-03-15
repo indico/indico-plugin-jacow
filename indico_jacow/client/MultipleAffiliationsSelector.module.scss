@@ -6,9 +6,9 @@
 // the LICENSE file for more details.
 
 .affiliation {
-    display: flex;
-    align-items: center;
-    scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  scroll-snap-align: start;
 
   &:first-child {
     scroll-margin-top: 1em;
@@ -17,7 +17,7 @@
   &:not(:last-child) {
     margin-bottom: 1em;
   }
-  
+
   .handle {
     cursor: pointer;
     padding: 0.5em;
