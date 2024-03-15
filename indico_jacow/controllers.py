@@ -119,19 +119,19 @@ class RHAbstractsStats(RHManageEventBase):
 
 
 def _append_affiliation_data_fields(headers, rows, items):
+    def make_address(affiliation):
+        address = ' '.join(filter(None, (affiliation.postcode, affiliation.city)))
+        return ', '.join(filter(None, (affiliation.street, address)))
+
     def full_name_and_data(person, data):
+        data = '; '.join(data)
         return f'{person.full_name} ({data})' if data else person.full_name
 
     def full_name_and_country(person):
-        return full_name_and_data(person, person.affiliation_link.country_code if person.affiliation_link else None)
+        return full_name_and_data(person, [ja.affiliation.country_code for ja in person.jacow_affiliations])
 
     def full_name_and_address(person):
-        if person.affiliation_link:
-            address = ' '.join(filter(None, (person.affiliation_link.postcode, person.affiliation_link.city)))
-            address = ', '.join(filter(None, (person.affiliation_link.street, address)))
-        else:
-            address = None
-        return full_name_and_data(person, address)
+        return full_name_and_data(person, [make_address(ja.affiliation) for ja in person.jacow_affiliations])
 
     headers.extend(('Speakers (country)', 'Speakers (address)', 'Primary authors (country)',
                     'Primary authors (address)', 'Co-Authors (country)', 'Co-Authors (address)'))
