@@ -60,8 +60,7 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
         self.connect(signals.core.add_form_fields, self._add_person_lists_settings, sender=ManagePersonListsForm)
         self.connect(signals.core.form_validated, self._person_lists_form_validated)
-        self.connect(signals.core.form_validated, self._submission_form_validated,
-                     sender=(AbstractForm, ContributionForm))
+        self.connect(signals.core.form_validated, self._submission_form_validated)
         self.connect(signals.event.person_link_field_extra_params, self._person_link_field_extra_params)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
@@ -121,6 +120,8 @@ class JACOWPlugin(IndicoPlugin):
             )
 
     def _submission_form_validated(self, form, **kwargs):
+        if not isinstance(form, (AbstractForm, ContributionForm)):
+            return
         if not self.event_settings.get(form.event, 'multiple_affiliations'):
             return
         if isinstance(form, AbstractForm):
