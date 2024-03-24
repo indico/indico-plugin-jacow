@@ -1,0 +1,31 @@
+name: Build
+
+env:
+  PYTHON_VERSION: '3.12'
+  TZ: Europe/Zurich
+
+on:
+  push:
+    branches:
+      - 'master'
+      - '*.x'
+  pull_request:
+      branches:
+        - 'master'
+        - '*.x'
+      types:
+        - opened
+        - reopened
+        - synchronize
+        - labeled
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build plugin 🏗
+    uses: indico/indico-gh-actions/.github/workflows/build-plugins.yml@master
+    with:
+      scripts-repo: indico/indico-gh-actions
+      artifact-retention-days: 7
