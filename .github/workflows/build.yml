@@ -27,5 +27,5 @@ jobs:
     name: Build plugin 🏗
     uses: indico/indico-gh-actions/.github/workflows/build-plugins.yml@master
     with:
-      scripts-repo: indico/indico-gh-actions
+      directory: jacow
       artifact-retention-days: 7
