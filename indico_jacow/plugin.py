@@ -68,7 +68,8 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
-        wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions, WPMyContributions, WPManagePapers)
+        wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
+               WPMyContributions, WPManagePapers)
         self.inject_bundle('main.js', wps)
         self.inject_bundle('main.css', wps)
 

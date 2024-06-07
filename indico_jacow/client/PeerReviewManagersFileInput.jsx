@@ -22,14 +22,23 @@ export default function PeerReviewManagersFileField ({}) {
 }
 
 export function PeerReviewManagersFileButton ({fieldId}) {
-    console.log(fieldId);
     if (fieldId !== 'judges' && fieldId !== 'content_reviewers'){
         return null
     }
     return (
         <>
-            <Button icon='download' as='div'/>
-            <Button icon='upload' as='div'/>
+            <Button 
+                icon='download'
+                as='div'
+                title={Translate.string('Export (CSV)')}
+                onClick={{}}
+            />
+            <Button 
+                icon='upload'
+                as='div'
+                title={Translate.string('Import (CSV)')}
+                onClick={{}}
+            />
         </>
     )
 }
