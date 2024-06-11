@@ -21,6 +21,7 @@ from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstr
 from indico.modules.events.contributions.controllers.management import RHManageContributionsExportActionsBase
 from indico.modules.events.contributions.util import generate_spreadsheet_from_contributions
 from indico.modules.events.management.controllers import RHManageEventBase
+from indico.modules.events.papers.controllers.paper import RHPapersActionBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.web.flask.util import url_for
@@ -223,3 +224,8 @@ class RHContributionsExportCSV(RHContributionsExportBase):
 class RHContributionsExportExcel(RHContributionsExportBase):
     def _process(self):
         return send_xlsx('contributions.xlsx', *self._generate_spreadsheet())
+
+
+class RHPeerReviewManagersImport(RHPapersActionBase):
+    def _process(self):
+        return print('THE URL ENDPOINT WORKS')
