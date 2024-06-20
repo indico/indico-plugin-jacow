@@ -8,58 +8,109 @@
 import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import'
 
 import PropTypes from 'prop-types';
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
+import {useDropzone} from 'react-dropzone';
 import {Button, Message, MessageHeader, MessageList, MessageItem, Icon} from 'semantic-ui-react';
+import {Field} from 'react-final-form';
 
+import {FinalField, handleSubmitError} from 'indico/react/forms';
 import {Translate} from 'indico/react/i18n';
 
-import {FinalSingleFileManager} from 'indico/react/components';
+import {SingleFileArea} from 'indico/react/components/files/FileArea';
 import {FinalModalForm} from 'indico/react/forms/final-form';
+import {indicoAxios} from 'indico/utils/axios';
 
 import './PeerReviewManagerFileInput.module.scss';
 
-const PeerReviewManagersFileInput = ({eventId}) => {
-    return (
-        <div>
-            <Message info icon styleName="message-icon">
-                <Icon name='lightbulb'/>
-                <Message.Content>
-                    <MessageHeader>
-                        <Translate>Upload a CSV (comma-separated values)</Translate>
-                    </MessageHeader>
-                    <p>The file most have exactly 6 columns in the following order:</p>
-                    <MessageList>
-                        <MessageItem>{Translate.string('First Name')}</MessageItem>
-                        <MessageItem>{Translate.string('Last Name')}</MessageItem>
-                        <MessageItem>{Translate.string('Affiliation')}</MessageItem>
-                        <MessageItem>{Translate.string('Position')}</MessageItem>
-                        <MessageItem>{Translate.string('Phone Number')}</MessageItem>
-                        <MessageItem>{Translate.string('E-mail')}</MessageItem>
-                    </MessageList>
-                    <p>The fields "First Name", "Last Name" and "E-mail" are mandatory.</p>
-                    <p>Users will be matched with existing Indico identities through their e-mail.</p>
-                    </Message.Content>
-            </Message>
-            <FinalSingleFileManager
-                name="file"
-                validExtensions={['csv']}
-                uploadURL={uploadManagersFileURL({event_id: eventId})}
-            />
-        </div>
-    );
-}
+const PeerReviewManagersFileInput = ({
+    onFocus,
+    onBlur,
+    onChange,
+    validExtensions,
+}) => {
+    const [file, setFile] = useState();
+
+    const markTouched = () => {
+        onFocus();
+        onBlur();
+    };
+
+    const onDropAccepted = useCallback(([acceptedFile]) => {
+        Object.assign(acceptedFile, {filename: acceptedFile.name});
+        setFile(acceptedFile);
+        onChange(acceptedFile);
+    }, [file, setFile, onChange]);
+
+    const dropzone = useDropzone({
+        onDragEnter: markTouched,
+        onFileDialogCancel: markTouched,
+        onDrop: markTouched,
+        onDropAccepted,
+        accept: validExtensions ? validExtensions.map(ext => `.${ext}`) : null,
+        multiple: false,
+        noClick: true,
+        noKeyboard: true,
+    });
+
+    return <SingleFileArea dropzone={dropzone} file={file} />;
+};
+
 
 export default function PeerReviewManagersFileField ({onClose, fieldId, eventId}) {
-    
+    const handleSubmit = async ({file}) => {
+        const headers = {'content-type': 'multipart/form-data'}
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            console.log(formData);
+            // TODO: Add field identifier to assign proper roles during import
+            await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {headers});
+            // TODO: Flash success or error message
+            onClose();
+        } catch (e) {
+            return handleSubmitError(e);
+        }
+    }
+
     return (
         <FinalModalForm
             id="peer-review-managers-file"
-            size="tiny"
+            size="small"
             onClose={onClose}
-            onSubmit={{}}
+            onSubmit={handleSubmit}
             header={`Import ${fieldId.replace('_', ' ')}`}
+            submitLabel={Translate.string('Import')}
         >
-            <PeerReviewManagersFileInput eventId={eventId}/>
+                <Message info icon styleName="message-icon">
+                    <Icon name='lightbulb'/>
+                    <Message.Content>
+                        <MessageHeader>
+                            <Translate>Upload a CSV (comma-separated values)</Translate>
+                        </MessageHeader>
+                        <p>The file most have exactly 6 columns in the following order:</p>
+                        <MessageList>
+                            <MessageItem>{Translate.string('First Name')}</MessageItem>
+                            <MessageItem>{Translate.string('Last Name')}</MessageItem>
+                            <MessageItem>{Translate.string('Affiliation')}</MessageItem>
+                            <MessageItem>{Translate.string('Position')}</MessageItem>
+                            <MessageItem>{Translate.string('Phone Number')}</MessageItem>
+                            <MessageItem>{Translate.string('E-mail')}</MessageItem>
+                        </MessageList>
+                        <p>The fields "First Name", "Last Name" and "E-mail" are mandatory.</p>
+                        <p>Users will be matched with existing Indico identities through their e-mail.</p>
+                        </Message.Content>
+                </Message>
+                <Field
+                    name='file'
+                    render={({input: {onChange: setDummyValue}}) => (
+                        <FinalField   
+                            name='file'
+                            validExtensions={['csv']}
+                            component={PeerReviewManagersFileInput}
+                            setValidationError={setDummyValue}
+                        />
+                    )}
+                />
         </FinalModalForm>
     )
 }
@@ -77,7 +128,8 @@ export function PeerReviewManagersFileButton ({fieldId, eventId}) {
                 icon='download'
                 as='div'
                 title={Translate.string('Export (CSV)')}
-                onClick={{}}
+                // TODO: Create an endpoint for managers data exporting
+                onClick={()=>{}}
             />
             <Button 
                 icon='upload'

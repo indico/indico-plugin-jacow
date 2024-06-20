@@ -6,9 +6,11 @@
 # the LICENSE file for more details.
 
 from collections import defaultdict
+import os
 from statistics import mean, pstdev
 
 from flask import session
+from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
 
@@ -24,6 +26,7 @@ from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.paper import RHPapersActionBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.util.spreadsheets import send_csv, send_xlsx
+from indico.web.args import use_args, use_kwargs
 from indico.web.flask.util import url_for
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
@@ -227,5 +230,8 @@ class RHContributionsExportExcel(RHContributionsExportBase):
 
 
 class RHPeerReviewManagersImport(RHPapersActionBase):
-    def _process(self):
-        return print('THE URL ENDPOINT WORKS')
+    @use_kwargs({'file': fields.Field(required=True)}, location='files')
+    def _process(self, file):
+        print(file)
+        # TODO: read csv and assign proper roles to the users
+        # listed for the peer review managers
