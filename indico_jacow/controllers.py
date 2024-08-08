@@ -6,15 +6,17 @@
 # the LICENSE file for more details.
 
 from collections import defaultdict
-import os
+import csv
+import io
 from statistics import mean, pstdev
 
-from flask import session
+from flask import session, jsonify
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
 
 from indico.core.db import db
+from indico.core.errors import UserValueError
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.controllers.base import RHAbstractsBase
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
@@ -25,8 +27,11 @@ from indico.modules.events.contributions.util import generate_spreadsheet_from_c
 from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.paper import RHPapersActionBase
 from indico.modules.events.tracks.models.tracks import Track
+from indico.modules.users import User
+from indico.util.i18n import _
 from indico.util.spreadsheets import send_csv, send_xlsx
-from indico.web.args import use_args, use_kwargs
+from indico.util.string import validate_email
+from indico.web.args import use_kwargs
 from indico.web.flask.util import url_for
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
@@ -232,6 +237,30 @@ class RHContributionsExportExcel(RHContributionsExportBase):
 class RHPeerReviewManagersImport(RHPapersActionBase):
     @use_kwargs({'file': fields.Field(required=True)}, location='files')
     def _process(self, file):
-        print(file)
-        # TODO: read csv and assign proper roles to the users
-        # listed for the peer review managers
+        file_content = file.read().decode('utf-8')
+        csv_file = io.StringIO(file_content)
+        reader = csv.DictReader(csv_file)
+
+        if 'Email' not in reader.fieldnames:
+            raise UserValueError(_('The CSV file is missing the "Email" column.'))
+        
+        emails = set()
+        for num_row, row in enumerate(reader, 1):
+            email = row['Email'].strip().lower()
+
+            if email and not validate_email(email):
+                raise UserValueError(_('Row {row}: invalid email address: {email}').format(row=num_row, email=email))
+            if email in emails:
+                raise UserValueError(_('Row {}: email address is not unique').format(num_row))
+            emails.add(email)
+
+        users = set(User.query.filter(~User.is_deleted, User.all_emails.in_(emails)))
+        users_emails = {user.email for user in users}
+        unknown_emails = emails - users_emails
+
+        identifiers = [user.identifier for user in users]
+
+        return jsonify({
+            'identifiers': identifiers,
+            'unknown_emails': list(unknown_emails)
+        })

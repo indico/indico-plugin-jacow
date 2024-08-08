@@ -56,16 +56,16 @@ const PeerReviewManagersFileInput = ({
 };
 
 
-export default function PeerReviewManagersFileField ({onClose, fieldId, eventId}) {
+export default function PeerReviewManagersFileField ({onClose, fieldId, eventId, onChange}) {
     const handleSubmit = async ({file}) => {
         const headers = {'content-type': 'multipart/form-data'}
+        let identifiers;
         try {
             const formData = new FormData();
             formData.append('file', file);
-            console.log(formData);
-            // TODO: Add field identifier to assign proper roles during import
-            await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {headers});
+            identifiers = await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {headers});
             // TODO: Flash success or error message
+            onChange(identifiers.data.identifiers)
             onClose();
         } catch (e) {
             return handleSubmitError(e);
@@ -115,7 +115,7 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId}
     )
 }
 
-export function PeerReviewManagersFileButton ({fieldId, eventId}) {
+export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
     const [fileImportVisible, setFileImportVisible] = useState(false);
 
     if (fieldId !== 'judges' && fieldId !== 'content_reviewers'){
@@ -142,6 +142,7 @@ export function PeerReviewManagersFileButton ({fieldId, eventId}) {
                     onClose={() => setFileImportVisible(false)}
                     fieldId={fieldId}
                     eventId={eventId}
+                    onChange={onChange}
                 />
             )}
         </>
