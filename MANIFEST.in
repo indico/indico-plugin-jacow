@@ -1,5 +1,0 @@
-graft indico_jacow/migrations
-graft indico_jacow/static
-graft indico_jacow/templates
-
-global-exclude *.pyc __pycache__ .keep
