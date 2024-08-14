@@ -5,7 +5,7 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
-// import downloadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_export'
+import downloadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_export'
 import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import'
 
 import PropTypes from 'prop-types';
@@ -111,7 +111,6 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId,
                         <MessageHeader>
                             <Translate>Upload a CSV (comma-separated values)</Translate>
                         </MessageHeader>
-                        <p></p>
                         <MessageList>
                             <MessageItem>
                                 {Translate.string('The file most have at least one column labeled "Email"')}
@@ -169,19 +168,13 @@ export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
         return null
     }
 
-    async function downloadCSVFile() {
-        await indicoAxios.post(downloadManagersFileURL({event_id: eventId}))
-    }
-
     return (
         <>
             <Button 
                 icon='download'
-                as='div'
+                as='a'
+                href={downloadManagersFileURL({event_id: eventId})}
                 title={Translate.string('Export (CSV)')}
-                // TODO: Create an endpoint for managers data exporting
-                // onClick={downloadCSVFile()}
-                onClick={()=>{}}
             />
             <Button 
                 icon='upload'
