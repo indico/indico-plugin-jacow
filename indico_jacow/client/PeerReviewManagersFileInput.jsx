@@ -173,7 +173,7 @@ export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
             <Button 
                 icon='download'
                 as='a'
-                href={downloadManagersFileURL({event_id: eventId})}
+                href={downloadManagersFileURL({event_id: eventId, field_id: fieldId})}
                 title={Translate.string('Export (CSV)')}
             />
             <Button 
