@@ -25,7 +25,6 @@ from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstr
 from indico.modules.events.contributions.controllers.management import RHManageContributionsExportActionsBase
 from indico.modules.events.contributions.util import generate_spreadsheet_from_contributions
 from indico.modules.events.management.controllers import RHManageEventBase
-from indico.modules.events.papers.controllers.paper import RHPapersActionBase
 from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.modules.users import User
@@ -257,6 +256,12 @@ class RHPeerReviewManagersImport(RHManagePapersBase):
 
         users = set(User.query.filter(~User.is_deleted, User.all_emails.in_(emails)))
         users_emails = {user.email for user in users}
+        
+        if not emails:
+            raise UserValueError(_('The "Email" column of the CSV is empty'))
+        if not users_emails:
+            raise UserValueError(_('No users found with the emails provided'))
+        
         unknown_emails = emails - users_emails
 
         identifiers = [user.identifier for user in users]
@@ -269,5 +274,10 @@ class RHPeerReviewManagersImport(RHManagePapersBase):
 
 class RHPeerReviewManagersExportCSV(RHManagePapersBase):
     def _process(self):
-        emails = ['michel.succar.medina@cern.ch', 'john.doe@cern.ch', 'jane.doe@cern.ch']
+        # TODO: Generate CSV with the users in charge of judging or reviewing
+        emails = [
+            {'Email': 'michel.succar.medina@cern.ch'},
+            {'Email': 'john.doe@cern.ch'},
+            {'Email': 'jane.doe@cern.ch'}
+        ]
         return send_csv('peer_review_managers.csv', ['Email'], emails, include_header=True)
