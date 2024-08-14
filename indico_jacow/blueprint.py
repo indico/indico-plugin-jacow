@@ -32,4 +32,4 @@ blueprint.add_url_rule('/manage/contributions/contributions_custom.xlsx', 'contr
 blueprint.add_url_rule('/manage/peer_review/managers/upload', 'peer_review_managers_import',
                        RHPeerReviewManagersImport, methods=('POST',))
 blueprint.add_url_rule('/manage/peer_review/managers/peer_review_managers.csv', 'peer_review_managers_export',
-                       RHPeerReviewManagersExportCSV, methods=('POST',))
+                       RHPeerReviewManagersExportCSV, methods=('GET',))
