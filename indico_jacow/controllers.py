@@ -26,6 +26,7 @@ from indico.modules.events.contributions.controllers.management import RHManageC
 from indico.modules.events.contributions.util import generate_spreadsheet_from_contributions
 from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.paper import RHPapersActionBase
+from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.modules.users import User
 from indico.util.i18n import _
@@ -234,7 +235,7 @@ class RHContributionsExportExcel(RHContributionsExportBase):
         return send_xlsx('contributions.xlsx', *self._generate_spreadsheet())
 
 
-class RHPeerReviewManagersImport(RHPapersActionBase):
+class RHPeerReviewManagersImport(RHManagePapersBase):
     @use_kwargs({'file': fields.Field(required=True)}, location='files')
     def _process(self, file):
         file_content = file.read().decode('utf-8')
@@ -243,7 +244,7 @@ class RHPeerReviewManagersImport(RHPapersActionBase):
 
         if 'Email' not in reader.fieldnames:
             raise UserValueError(_('The CSV file is missing the "Email" column.'))
-        
+
         emails = set()
         for num_row, row in enumerate(reader, 1):
             email = row['Email'].strip().lower()
@@ -264,3 +265,9 @@ class RHPeerReviewManagersImport(RHPapersActionBase):
             'identifiers': identifiers,
             'unknown_emails': list(unknown_emails)
         })
+
+
+class RHPeerReviewManagersExportCSV(RHManagePapersBase):
+    def _process(self):
+        emails = ['michel.succar.medina@cern.ch', 'john.doe@cern.ch', 'jane.doe@cern.ch']
+        return send_csv('peer_review_managers.csv', ['Email'], emails, include_header=True)
