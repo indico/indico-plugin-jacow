@@ -5,12 +5,14 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
+// import downloadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_export'
 import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import'
 
 import PropTypes from 'prop-types';
 import React, {useCallback, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
-import {Button, Message, MessageHeader, MessageList, MessageItem, Icon} from 'semantic-ui-react';
+import {Button, Message, MessageHeader, MessageList, 
+    MessageItem, Icon, Loader, Segment, Dimmer} from 'semantic-ui-react';
 import {Field} from 'react-final-form';
 
 import {FinalField, handleSubmitError} from 'indico/react/forms';
@@ -27,6 +29,10 @@ const PeerReviewManagersFileInput = ({
     onBlur,
     onChange,
     validExtensions,
+    setUnknownEmails,
+    setUserIdentifiers,
+    setLoading,
+    eventId,
 }) => {
     const [file, setFile] = useState();
 
@@ -35,10 +41,34 @@ const PeerReviewManagersFileInput = ({
         onBlur();
     };
 
-    const onDropAccepted = useCallback(([acceptedFile]) => {
+    async function getUserList(file, eventId) {
+        const headers = {'content-type': 'multipart/form-data'}
+        let response;
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            response = await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {headers});
+            if (response.data.unknown_emails.length > 0) {
+                setUnknownEmails(response.data.unknown_emails)
+            }
+            setUserIdentifiers(response.data.identifiers)
+            return true;
+        } catch (e) {
+            handleSubmitError(e);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const onDropAccepted = useCallback(async ([acceptedFile]) => {
         Object.assign(acceptedFile, {filename: acceptedFile.name});
-        setFile(acceptedFile);
-        onChange(acceptedFile);
+        const isSuccess = await getUserList(acceptedFile, eventId);
+        if(isSuccess){
+            setFile(acceptedFile);
+            onChange(acceptedFile);
+        }
     }, [file, setFile, onChange]);
 
     const dropzone = useDropzone({
@@ -57,19 +87,13 @@ const PeerReviewManagersFileInput = ({
 
 
 export default function PeerReviewManagersFileField ({onClose, fieldId, eventId, onChange}) {
-    const handleSubmit = async ({file}) => {
-        const headers = {'content-type': 'multipart/form-data'}
-        let identifiers;
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            identifiers = await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {headers});
-            // TODO: Flash success or error message
-            onChange(identifiers.data.identifiers)
-            onClose();
-        } catch (e) {
-            return handleSubmitError(e);
-        }
+    const [unknownEmails, setUnknownEmails] = useState([])
+    const [userIdentifiers, setUserIdentifiers] = useState([])
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async () => {
+        onChange(userIdentifiers)
+        onClose();
     }
 
     return (
@@ -81,25 +105,44 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId,
             header={`Import ${fieldId.replace('_', ' ')}`}
             submitLabel={Translate.string('Import')}
         >
-                <Message info icon styleName="message-icon">
+                <Message info icon>
                     <Icon name='lightbulb'/>
                     <Message.Content>
                         <MessageHeader>
                             <Translate>Upload a CSV (comma-separated values)</Translate>
                         </MessageHeader>
-                        <p>The file most have exactly 6 columns in the following order:</p>
+                        <p></p>
                         <MessageList>
-                            <MessageItem>{Translate.string('First Name')}</MessageItem>
-                            <MessageItem>{Translate.string('Last Name')}</MessageItem>
-                            <MessageItem>{Translate.string('Affiliation')}</MessageItem>
-                            <MessageItem>{Translate.string('Position')}</MessageItem>
-                            <MessageItem>{Translate.string('Phone Number')}</MessageItem>
-                            <MessageItem>{Translate.string('E-mail')}</MessageItem>
+                            <MessageItem>
+                                {Translate.string('The file most have at least one column labeled "Email"')}
+                            </MessageItem>
+                            <MessageItem>
+                                {Translate.string('Any other fields like "First Name" and "Last Name" are acceptable but not needed.')}
+                            </MessageItem>
                         </MessageList>
-                        <p>The fields "First Name", "Last Name" and "E-mail" are mandatory.</p>
                         <p>Users will be matched with existing Indico identities through their e-mail.</p>
-                        </Message.Content>
+                    </Message.Content>
                 </Message>
+                {loading && (
+                    <Dimmer active inverted>
+                        <Loader inline/>
+                    </Dimmer>
+                )}
+                {unknownEmails.length > 0 && (
+                    <Message icon color="yellow">
+                        <Icon name="warning sign"/>
+                        <Message.Content>
+                            <MessageHeader>
+                                <Translate>The following emails are not registered and won't be imported:</Translate>
+                            </MessageHeader>
+                            <MessageList>
+                                {unknownEmails.map((e, i) => {
+                                    return <MessageItem key={i}>{e}</MessageItem>
+                                })}
+                            </MessageList>
+                        </Message.Content>
+                    </Message>
+                )}
                 <Field
                     name='file'
                     render={({input: {onChange: setDummyValue}}) => (
@@ -108,6 +151,10 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId,
                             validExtensions={['csv']}
                             component={PeerReviewManagersFileInput}
                             setValidationError={setDummyValue}
+                            setUnknownEmails={setUnknownEmails}
+                            setUserIdentifiers={setUserIdentifiers}
+                            setLoading={setLoading}
+                            eventId={eventId}
                         />
                     )}
                 />
@@ -122,6 +169,10 @@ export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
         return null
     }
 
+    async function downloadCSVFile() {
+        await indicoAxios.post(downloadManagersFileURL({event_id: eventId}))
+    }
+
     return (
         <>
             <Button 
@@ -129,6 +180,7 @@ export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
                 as='div'
                 title={Translate.string('Export (CSV)')}
                 // TODO: Create an endpoint for managers data exporting
+                // onClick={downloadCSVFile()}
                 onClick={()=>{}}
             />
             <Button 
