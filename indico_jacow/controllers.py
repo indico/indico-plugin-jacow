@@ -276,15 +276,13 @@ class RHPeerReviewManagersExportCSV(RHManagePapersBase):
     @use_args({'field_id': fields.Str()}, location='query')
     def _process(self, args):
         # TODO: Generate CSV with the users in charge of judging or reviewing
+        cfp = self.event.cfp
+
         field_id = args.get('field_id')
-        emails = []
         if field_id == 'content_reviewers':
-            emails = [
-                {'Email': 'john.doe@cern.ch'},
-                {'Email': 'jane.doe@cern.ch'},
-            ]
+            content_reviewers = cfp.content_reviewers
+            print(content_reviewers)
         if field_id == 'judges':
-            emails = [
-                {'Email': 'michel.succar.medina@cern.ch'},
-            ]
-        return send_csv(f'{field_id}.csv', ['Email'], emails, include_header=True)
+            judges = cfp.judges
+            print(judges)
+        # return send_csv(f'{field_id}.csv', ['Email'], emails, include_header=True)
