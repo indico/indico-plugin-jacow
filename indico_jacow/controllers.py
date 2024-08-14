@@ -31,7 +31,7 @@ from indico.modules.users import User
 from indico.util.i18n import _
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.util.string import validate_email
-from indico.web.args import use_kwargs
+from indico.web.args import use_args, use_kwargs
 from indico.web.flask.util import url_for
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
@@ -273,11 +273,18 @@ class RHPeerReviewManagersImport(RHManagePapersBase):
 
 
 class RHPeerReviewManagersExportCSV(RHManagePapersBase):
-    def _process(self):
+    @use_args({'field_id': fields.Str()}, location='query')
+    def _process(self, args):
         # TODO: Generate CSV with the users in charge of judging or reviewing
-        emails = [
-            {'Email': 'michel.succar.medina@cern.ch'},
-            {'Email': 'john.doe@cern.ch'},
-            {'Email': 'jane.doe@cern.ch'}
-        ]
-        return send_csv('peer_review_managers.csv', ['Email'], emails, include_header=True)
+        field_id = args.get('field_id')
+        emails = []
+        if field_id == 'content_reviewers':
+            emails = [
+                {'Email': 'john.doe@cern.ch'},
+                {'Email': 'jane.doe@cern.ch'},
+            ]
+        if field_id == 'judges':
+            emails = [
+                {'Email': 'michel.succar.medina@cern.ch'},
+            ]
+        return send_csv(f'{field_id}.csv', ['Email'], emails, include_header=True)
