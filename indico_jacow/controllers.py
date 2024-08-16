@@ -87,12 +87,17 @@ class RHAbstractsStats(RHManageEventBase):
                  .options(load_only('user_id')))
         reviewers = sorted({r.user for r in query}, key=lambda x: x.display_full_name.lower())
         list_items = [item for item in self.event.get_sorted_tracks() if not item.is_track_group or item.tracks]
-        review_counts = {user: get_track_reviewer_abstract_counts(self.event, user) for user in reviewers}
-        for user in review_counts:
-            review_counts[user] = {track: review_counts[user][track]['reviewed'] for track in review_counts[user]}
-            review_counts[user]['total'] = sum(review_counts[user][track] for track in review_counts[user])
+        review_counts = {
+            user: {
+                track: counts['reviewed']
+                for track, counts in get_track_reviewer_abstract_counts(self.event, user).items()
+            }
+            for user in reviewers
+        }
+        for user_review_counts in review_counts.values():
+            user_review_counts['total'] = sum(user_review_counts.values())
             for group in self.event.track_groups:
-                review_counts[user][group] = sum(review_counts[user][track] for track in group.tracks)
+                user_review_counts[group] = sum(user_review_counts[track] for track in group.tracks)
 
         # get the positive answers to boolean questions
         questions = _get_boolean_questions(self.event)
