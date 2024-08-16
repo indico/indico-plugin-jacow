@@ -24,7 +24,7 @@ jacow = 'indico_jacow.plugin:JACOWPlugin'
 requires = ['hatchling==1.25.0']
 build-backend = 'hatchling.build'
 
-[tool.hatch.build.targets.wheel]
+[tool.hatch.build]
 packages = ['indico_jacow']
 exclude = [
     '*.no-header',
