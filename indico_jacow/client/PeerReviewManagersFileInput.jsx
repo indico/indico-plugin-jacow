@@ -5,7 +5,6 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
-import downloadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_export'
 import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import'
 
 import PropTypes from 'prop-types';
@@ -63,7 +62,7 @@ const PeerReviewManagersFileInput = ({
     }
 
     const onDropAccepted = useCallback(async ([acceptedFile]) => {
-        Object.assign(acceptedFile, {filename: acceptedFile.name});
+        acceptedFile.filename = acceptedFile.name;
         const isSuccess = await getUserList(acceptedFile, eventId);
         if(isSuccess){
             setFile(acceptedFile);
@@ -86,7 +85,7 @@ const PeerReviewManagersFileInput = ({
 };
 
 
-export default function PeerReviewManagersFileField ({onClose, fieldId, eventId, onChange}) {
+export default function PeerReviewManagersFileField ({onClose, eventId, onChange}) {
     const [unknownEmails, setUnknownEmails] = useState([])
     const [userIdentifiers, setUserIdentifiers] = useState([])
     const [loading, setLoading] = useState(false)
@@ -102,7 +101,7 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId,
             size="small"
             onClose={onClose}
             onSubmit={handleSubmit}
-            header={`Import ${fieldId.replace('_', ' ')}`}
+            header={Translate.string('Import from CSV')}
             submitLabel={Translate.string('Import')}
         >
                 <Message info icon>
@@ -161,35 +160,56 @@ export default function PeerReviewManagersFileField ({onClose, fieldId, eventId,
     )
 }
 
-export function PeerReviewManagersFileButton ({fieldId, eventId, onChange}) {
+export function PeerReviewManagersFileButton ({entries, importExport, eventId, onChange}) {
     const [fileImportVisible, setFileImportVisible] = useState(false);
 
-    if (fieldId !== 'judges' && fieldId !== 'content_reviewers'){
-        return null
+    const downloadCSV = () => {
+        const headers = ['First Name', 'Last Name', 'Email', 'Phone Number'];
+        const rows = entries.map(e => [
+            e.firstName,
+            e.lastName,
+            e.email,
+            e.phone || 'N/A'
+        ]);
+
+        let csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += headers.join(',') + '\n';
+        rows.forEach(row => {
+            csvContent += row.join(',') + '\n';
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'peer_review_management.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     return (
-        <>
-            <Button 
-                icon='download'
-                as='a'
-                href={downloadManagersFileURL({event_id: eventId, field_id: fieldId})}
-                title={Translate.string('Export (CSV)')}
-            />
-            <Button 
-                icon='upload'
-                as='div'
-                title={Translate.string('Import (CSV)')}
-                onClick={() => setFileImportVisible(true)}
-            />
-            {fileImportVisible && (
-                <PeerReviewManagersFileField 
-                    onClose={() => setFileImportVisible(false)}
-                    fieldId={fieldId}
-                    eventId={eventId}
-                    onChange={onChange}
+        importExport && (
+            <>
+                <Button 
+                    icon='download'
+                    as='div'
+                    onClick={downloadCSV}
+                    title={Translate.string('Export (CSV)')}
                 />
-            )}
-        </>
+                <Button 
+                    icon='upload'
+                    as='div'
+                    title={Translate.string('Import (CSV)')}
+                    onClick={() => setFileImportVisible(true)}
+                />
+                {fileImportVisible && (
+                    <PeerReviewManagersFileField 
+                        onClose={() => setFileImportVisible(false)}
+                        eventId={eventId}
+                        onChange={onChange}
+                    />
+                )}
+            </>
+        )
     );
 }
