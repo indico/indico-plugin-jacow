@@ -5,12 +5,12 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
-from collections import defaultdict
 import csv
 import io
+from collections import defaultdict
 from statistics import mean, pstdev
 
-from flask import session, jsonify
+from flask import jsonify, session
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
@@ -256,12 +256,12 @@ class RHPeerReviewManagersImport(RHManagePapersBase):
 
         users = set(User.query.filter(~User.is_deleted, User.all_emails.in_(emails)))
         users_emails = {user.email for user in users}
-        
+
         if not emails:
             raise UserValueError(_('The "Email" column of the CSV is empty'))
         if not users_emails:
             raise UserValueError(_('No users found with the emails provided'))
-        
+
         unknown_emails = emails - users_emails
 
         identifiers = [user.identifier for user in users]
@@ -277,12 +277,23 @@ class RHPeerReviewManagersExportCSV(RHManagePapersBase):
     def _process(self, args):
         # TODO: Generate CSV with the users in charge of judging or reviewing
         cfp = self.event.cfp
+        users = []
 
         field_id = args.get('field_id')
         if field_id == 'content_reviewers':
-            content_reviewers = cfp.content_reviewers
-            print(content_reviewers)
+            users = cfp.content_reviewers
         if field_id == 'judges':
-            judges = cfp.judges
-            print(judges)
-        # return send_csv(f'{field_id}.csv', ['Email'], emails, include_header=True)
+            users = cfp.judges
+
+        headers = ['First Name', 'Last Name', 'Affiliation', 'Email', 'Phone Number']
+        rows = []
+
+        for user in users:
+            user_info = {'First Name': user.first_name,
+                         'Last Name': user.last_name,
+                         'Affiliation': user.affiliation,
+                         'Email': user.email,
+                         'Phone Number': user.phone or 'N/A'}
+            rows.append(user_info)
+
+        return send_csv(f'{field_id}.csv', headers, rows, include_header=True)
