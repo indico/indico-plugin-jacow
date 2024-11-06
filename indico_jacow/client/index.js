@@ -12,10 +12,16 @@ import MultipleAffiliationsSelector, {
   customFields,
   onAddPersonLink,
 } from './MultipleAffiliationsSelector';
+import {PeerReviewManagersFileButton} from './PeerReviewManagersFileInput';
 
 const PLUGIN_NAME = 'jacow';
 
 registerPluginComponent(PLUGIN_NAME, 'personListItemActions', MultipleAffiliationsButton);
 registerPluginComponent(PLUGIN_NAME, 'personLinkFieldModals', MultipleAffiliationsSelector);
+registerPluginComponent(
+  PLUGIN_NAME,
+  'principal-list-field-add-buttons',
+  PeerReviewManagersFileButton
+);
 registerPluginObject(PLUGIN_NAME, 'personLinkCustomFields', customFields);
 registerPluginObject(PLUGIN_NAME, 'onAddPersonLink', onAddPersonLink);
