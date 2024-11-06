@@ -8,7 +8,7 @@
 import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import';
 
 import PropTypes from 'prop-types';
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useContext, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
 import {Field} from 'react-final-form';
 import {
@@ -24,7 +24,7 @@ import {
 } from 'semantic-ui-react';
 
 import {SingleFileArea} from 'indico/react/components/files/FileArea';
-import {FinalField, handleSubmitError} from 'indico/react/forms';
+import {FormContext, FinalField, handleSubmitError} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
 import {Translate} from 'indico/react/i18n';
 import {indicoAxios} from 'indico/utils/axios';
@@ -174,7 +174,8 @@ export default function PeerReviewManagersFileField({onClose, eventId, onChange}
   );
 }
 
-export function PeerReviewManagersFileButton({entries, importExport, eventId, onChange}) {
+export function PeerReviewManagersFileButton({entries, eventId, onChange}) {
+  const formContext = useContext(FormContext);
   const [fileImportVisible, setFileImportVisible] = useState(false);
 
   const downloadCSV = () => {
@@ -196,29 +197,35 @@ export function PeerReviewManagersFileButton({entries, importExport, eventId, on
     document.body.removeChild(link);
   };
 
+  if (
+    !formContext ||
+    formContext[0] !== 'PaperTeamsForm' ||
+    !['judges', 'content_reviewers'].includes(formContext[1])
+  ) {
+    return null;
+  }
+
   return (
-    importExport && (
-      <>
-        <Button
-          icon="download"
-          as="div"
-          onClick={downloadCSV}
-          title={Translate.string('Export (CSV)')}
+    <>
+      <Button
+        icon="download"
+        as="div"
+        onClick={downloadCSV}
+        title={Translate.string('Export (CSV)')}
+      />
+      <Button
+        icon="upload"
+        as="div"
+        title={Translate.string('Import (CSV)')}
+        onClick={() => setFileImportVisible(true)}
+      />
+      {fileImportVisible && (
+        <PeerReviewManagersFileField
+          onClose={() => setFileImportVisible(false)}
+          eventId={eventId}
+          onChange={onChange}
         />
-        <Button
-          icon="upload"
-          as="div"
-          title={Translate.string('Import (CSV)')}
-          onClick={() => setFileImportVisible(true)}
-        />
-        {fileImportVisible && (
-          <PeerReviewManagersFileField
-            onClose={() => setFileImportVisible(false)}
-            eventId={eventId}
-            onChange={onChange}
-          />
-        )}
-      </>
-    )
+      )}
+    </>
   );
 }
