@@ -234,7 +234,7 @@ class RHContributionsExportExcel(RHContributionsExportBase):
         return send_xlsx('contributions.xlsx', *self._generate_spreadsheet())
 
 
-class RHPeerReviewManagersImport(RHManagePapersBase):
+class RHPeerReviewCSVImport(RHManagePapersBase):
     @use_kwargs({'file': fields.Field(required=True)}, location='files')
     def _process(self, file):
         file_content = file.read().decode('utf-8')

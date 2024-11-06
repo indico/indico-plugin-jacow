@@ -5,7 +5,7 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
-import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_managers_import';
+import uploadManagersFileURL from 'indico-url:plugin_jacow.peer_review_csv_import';
 
 import PropTypes from 'prop-types';
 import React, {useCallback, useContext, useState} from 'react';
