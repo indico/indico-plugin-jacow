@@ -12,9 +12,7 @@ import MultipleAffiliationsSelector, {
   customFields,
   onAddPersonLink,
 } from './MultipleAffiliationsSelector';
-import PeerReviewManagersFileField, {
-  PeerReviewManagersFileButton,
-} from './PeerReviewManagersFileInput';
+import {PeerReviewManagersFileButton} from './PeerReviewManagersFileInput';
 
 const PLUGIN_NAME = 'jacow';
 
