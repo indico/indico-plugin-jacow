@@ -97,7 +97,7 @@ const PeerReviewManagersFileInput = ({
   return <SingleFileArea dropzone={dropzone} file={file} />;
 };
 
-export default function PeerReviewManagersFileField({onClose, eventId, onChange}) {
+function PeerReviewManagersFileField({onClose, eventId, onChange}) {
   const [unknownEmails, setUnknownEmails] = useState([]);
   const [userIdentifiers, setUserIdentifiers] = useState([]);
   const [loading, setLoading] = useState(false);
