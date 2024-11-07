@@ -180,6 +180,8 @@ class JACOWPlugin(IndicoPlugin):
             g.jacow_affiliations_ids = {data['email']: data.get('jacow_affiliations_ids', [])}
 
     def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
+        if not all(isinstance(p, (AbstractPersonLink, ContributionPersonLink)) for p in orig):
+            return
         for person, person_link in zip(data, orig, strict=True):
             person['jacow_affiliations_ids'] = [ja.affiliation.id for ja in person_link.jacow_affiliations]
             person['jacow_affiliations_meta'] = [ja.details for ja in person_link.jacow_affiliations]
