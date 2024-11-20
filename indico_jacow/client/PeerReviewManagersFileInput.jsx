@@ -19,7 +19,6 @@ import {
   MessageItem,
   Icon,
   Loader,
-  Segment,
   Dimmer,
 } from 'semantic-ui-react';
 
@@ -95,6 +94,16 @@ const PeerReviewManagersFileInput = ({
   });
 
   return <SingleFileArea dropzone={dropzone} file={file} />;
+};
+PeerReviewManagersFileInput.propTypes = {
+  onFocus: PropTypes.func.isRequired,
+  onBlur: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired,
+  validExtensions: PropTypes.arrayOf(PropTypes.string).isRequired,
+  setUnknownEmails: PropTypes.func.isRequired,
+  setUserIdentifiers: PropTypes.func.isRequired,
+  setLoading: PropTypes.func.isRequired,
+  eventId: PropTypes.number.isRequired,
 };
 
 function PeerReviewManagersFileField({onClose, eventId, onChange}) {
@@ -173,6 +182,11 @@ function PeerReviewManagersFileField({onClose, eventId, onChange}) {
     </FinalModalForm>
   );
 }
+PeerReviewManagersFileField.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  eventId: PropTypes.number.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
 
 export function PeerReviewManagersFileButton({entries, eventId, onChange}) {
   const formContext = useContext(FormContext);
@@ -229,3 +243,8 @@ export function PeerReviewManagersFileButton({entries, eventId, onChange}) {
     </>
   );
 }
+PeerReviewManagersFileButton.propTypes = {
+  entries: PropTypes.arrayOf(PropTypes.object).isRequired,
+  eventId: PropTypes.number.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
