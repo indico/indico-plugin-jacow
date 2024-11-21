@@ -31,21 +31,14 @@ import {indicoAxios} from 'indico/utils/axios';
 import './PeerReviewManagerFileInput.module.scss';
 
 const PeerReviewManagersFileInput = ({
-  onFocus,
-  onBlur,
-  onChange,
-  validExtensions,
+  setValidationError,
   setUnknownEmails,
   setUserIdentifiers,
   setLoading,
   eventId,
 }) => {
   const [file, setFile] = useState();
-
-  const markTouched = () => {
-    onFocus();
-    onBlur();
-  };
+  const validExtensions = ['csv'];
 
   async function getUserList(file, eventId) {
     const headers = {'content-type': 'multipart/form-data'};
@@ -76,16 +69,13 @@ const PeerReviewManagersFileInput = ({
       const isSuccess = await getUserList(acceptedFile, eventId);
       if (isSuccess) {
         setFile(acceptedFile);
-        onChange(acceptedFile);
+        setValidationError(acceptedFile);
       }
     },
-    [file, setFile, onChange]
+    [file, setFile, setValidationError]
   );
 
   const dropzone = useDropzone({
-    onDragEnter: markTouched,
-    onFileDialogCancel: markTouched,
-    onDrop: markTouched,
     onDropAccepted,
     accept: validExtensions ? validExtensions.map(ext => `.${ext}`) : null,
     multiple: false,
@@ -96,10 +86,7 @@ const PeerReviewManagersFileInput = ({
   return <SingleFileArea dropzone={dropzone} file={file} />;
 };
 PeerReviewManagersFileInput.propTypes = {
-  onFocus: PropTypes.func.isRequired,
-  onBlur: PropTypes.func.isRequired,
-  onChange: PropTypes.func.isRequired,
-  validExtensions: PropTypes.arrayOf(PropTypes.string).isRequired,
+  setValidationError: PropTypes.func.isRequired,
   setUnknownEmails: PropTypes.func.isRequired,
   setUserIdentifiers: PropTypes.func.isRequired,
   setLoading: PropTypes.func.isRequired,
@@ -169,7 +156,6 @@ function PeerReviewManagersFileField({onClose, eventId, onChange}) {
         render={({input: {onChange: setDummyValue}}) => (
           <FinalField
             name="file"
-            validExtensions={['csv']}
             component={PeerReviewManagersFileInput}
             setValidationError={setDummyValue}
             setUnknownEmails={setUnknownEmails}
