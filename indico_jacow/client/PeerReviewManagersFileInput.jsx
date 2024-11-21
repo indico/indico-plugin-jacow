@@ -157,9 +157,9 @@ function PeerReviewManagersFileField({onClose, eventId, onChange}) {
               <Translate>The following emails are not registered and won't be imported:</Translate>
             </MessageHeader>
             <MessageList>
-              {unknownEmails.map((e, i) => {
-                return <MessageItem key={i}>{e}</MessageItem>;
-              })}
+              {unknownEmails.map((e, i) => (
+                <MessageItem key={i}>{e}</MessageItem>
+              ))}
             </MessageList>
           </Message.Content>
         </Message>
