@@ -37,42 +37,45 @@ const PeerReviewManagersFileInput = ({
   setLoading,
   eventId,
 }) => {
-  const [file, setFile] = useState();
+  const [uploadedFile, setFile] = useState();
   const validExtensions = ['csv'];
 
-  async function getUserList(file, eventId) {
-    const headers = {'content-type': 'multipart/form-data'};
-    let response;
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      response = await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {
-        headers,
-      });
-      if (response.data.unknown_emails.length > 0) {
-        setUnknownEmails(response.data.unknown_emails);
+  const userList = useCallback(
+    async file => {
+      const headers = {'content-type': 'multipart/form-data'};
+      let response;
+      setLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        response = await indicoAxios.post(uploadManagersFileURL({event_id: eventId}), formData, {
+          headers,
+        });
+        if (response.data.unknown_emails.length > 0) {
+          setUnknownEmails(response.data.unknown_emails);
+        }
+        setUserIdentifiers(response.data.identifiers);
+        return true;
+      } catch (e) {
+        handleSubmitError(e);
+        return false;
+      } finally {
+        setLoading(false);
       }
-      setUserIdentifiers(response.data.identifiers);
-      return true;
-    } catch (e) {
-      handleSubmitError(e);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [eventId, setLoading, setUnknownEmails, setUserIdentifiers]
+  );
 
   const onDropAccepted = useCallback(
     async ([acceptedFile]) => {
       acceptedFile.filename = acceptedFile.name;
-      const isSuccess = await getUserList(acceptedFile, eventId);
+      const isSuccess = await userList(acceptedFile);
       if (isSuccess) {
         setFile(acceptedFile);
         setValidationError(acceptedFile);
       }
     },
-    [file, setFile, setValidationError]
+    [userList, setValidationError]
   );
 
   const dropzone = useDropzone({
@@ -83,7 +86,7 @@ const PeerReviewManagersFileInput = ({
     noKeyboard: true,
   });
 
-  return <SingleFileArea dropzone={dropzone} file={file} />;
+  return <SingleFileArea dropzone={dropzone} file={uploadedFile} />;
 };
 PeerReviewManagersFileInput.propTypes = {
   setValidationError: PropTypes.func.isRequired,
