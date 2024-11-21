@@ -133,12 +133,12 @@ function PeerReviewManagersFileField({onClose, eventId, onChange}) {
           </MessageHeader>
           <MessageList>
             <MessageItem>
-              {Translate.string('The file most have at least one column labeled "Email"')}
+              <Translate>The file must have at least one column labeled "Email".</Translate>
             </MessageItem>
             <MessageItem>
-              {Translate.string(
-                'Any other fields like "First Name" and "Last Name" are acceptable but not needed.'
-              )}
+              <Translate>
+                Any other fields like "First Name" and "Last Name" are acceptable but not needed.
+              </Translate>
             </MessageItem>
           </MessageList>
           <p>Users will be matched with existing Indico identities through their e-mail.</p>
