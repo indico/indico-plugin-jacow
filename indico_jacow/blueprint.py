@@ -9,7 +9,7 @@ from indico.core.plugins import IndicoPluginBlueprint
 
 from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
                                       RHContributionsExportCSV, RHContributionsExportExcel,
-                                      RHDisplayAbstractsStatistics)
+                                      RHDisplayAbstractsStatistics, RHPeerReviewCSVImport)
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
@@ -28,3 +28,7 @@ blueprint.add_url_rule('/manage/contributions/contributions_custom.csv', 'contri
                        RHContributionsExportCSV, methods=('POST',))
 blueprint.add_url_rule('/manage/contributions/contributions_custom.xlsx', 'contributions_xlsx_export_custom',
                        RHContributionsExportExcel, methods=('POST',))
+
+# Peer reviewing CSV import
+blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_import', RHPeerReviewCSVImport,
+                       methods=('POST',))

@@ -22,6 +22,7 @@ from indico.modules.events.contributions.models.persons import ContributionPerso
 from indico.modules.events.contributions.views import WPContributions, WPManageContributions, WPMyContributions
 from indico.modules.events.layout.util import MenuEntryData
 from indico.modules.events.models.persons import EventPerson
+from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
 from indico.util.i18n import _
@@ -67,7 +68,8 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
-        wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions, WPMyContributions)
+        wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
+               WPMyContributions, WPManagePapers)
         self.inject_bundle('main.js', wps)
         self.inject_bundle('main.css', wps)
 
