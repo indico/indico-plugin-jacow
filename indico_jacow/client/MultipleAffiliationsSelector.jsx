@@ -228,14 +228,12 @@ export function MultipleAffiliationsButton({person, onEdit, disabled, extraParam
         <IconGroup size="large">
           <Icon
             name="building"
-            color={
-              person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'
-            }
+            color={person.jacowAffiliationsIds?.length ? 'blue' : 'grey'}
             onClick={() => onEdit('jacow_affiliations')}
             disabled={disabled || !person.email}
             link={!(disabled || !person.email)}
           />
-          {!person.jacowAffiliationsIds && (
+          {!person.jacowAffiliationsIds?.length && (
             <Icon
               name="exclamation circle"
               title={Translate.string('No affiliations added')}

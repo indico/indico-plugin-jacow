@@ -128,14 +128,17 @@ class JACOWPlugin(IndicoPlugin):
         if not self.event_settings.get(form.event, 'multiple_affiliations'):
             return
         if isinstance(form, AbstractForm):
-            person_links = form.person_links.data
+            person_links = form.person_links
             affiliations_cls = AbstractAffiliation
         else:
-            person_links = form.person_link_data.data
+            person_links = form.person_link_data
             affiliations_cls = ContributionAffiliation
         affiliations_ids = g.pop('jacow_affiliations_ids', {})
-        for person_link in person_links:
+        for person_link in person_links.data:
             person_affiliations = affiliations_ids.get(person_link.person.email, [])
+            if not person_affiliations:
+                person_links.errors.append(_('Affiliations are required for everyone'))
+                return False
             person_link.jacow_affiliations = []
             db.session.flush()
             person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id, display_order=i)
@@ -152,9 +155,9 @@ class JACOWPlugin(IndicoPlugin):
     def _person_required_fields(self, form, **kwargs):
         if (
             isinstance(form, (AbstractForm, ContributionForm)) and
-            self.event_settings.get(form.event, 'multiple_affiliations')
+            persons_settings.get(form.event, 'enforce_user_search')
         ):
-            return ['first_name', 'last_name', 'email']
+            return ['first_name', 'email']
 
     def _abstract_accepted(self, abstract, contribution, **kwargs):
         for contrib_person in contribution.person_links:
@@ -181,9 +184,6 @@ class JACOWPlugin(IndicoPlugin):
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
-        if not data.get('email'):
-            # XXX: we do not support affiliations for persons without email for now
-            return
         if hasattr(g, 'jacow_affiliations_ids'):
             g.jacow_affiliations_ids[data['email']] = data.get('jacow_affiliations_ids', [])
         else:
