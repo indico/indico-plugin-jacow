@@ -153,10 +153,7 @@ class JACOWPlugin(IndicoPlugin):
             return {'disable_affiliations': True, 'jacow_affiliations': True}
 
     def _person_required_fields(self, form, **kwargs):
-        if (
-            isinstance(form, (AbstractForm, ContributionForm)) and
-            persons_settings.get(form.event, 'enforce_user_search')
-        ):
+        if isinstance(form, (AbstractForm, ContributionForm)):
             return ['first_name', 'email']
 
     def _abstract_accepted(self, abstract, contribution, **kwargs):
