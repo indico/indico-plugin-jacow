@@ -1,5 +1,5 @@
 # This file is part of the JACoW plugin.
-# Copyright (C) 2021 - 2024 CERN
+# Copyright (C) 2021 - 2025 CERN
 #
 # The CERN Indico plugins are free software; you can redistribute
 # them and/or modify them under the terms of the MIT License; see
