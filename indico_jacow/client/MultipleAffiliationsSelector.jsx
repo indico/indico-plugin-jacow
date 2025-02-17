@@ -11,7 +11,17 @@ import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import {DndProvider} from 'react-dnd';
 import {HTML5Backend} from 'react-dnd-html5-backend';
-import {Dropdown, Header, Icon, IconGroup, List, Popup, Ref, Segment} from 'semantic-ui-react';
+import {
+  Dropdown,
+  Header,
+  Icon,
+  IconGroup,
+  List,
+  Popup,
+  Ref,
+  Segment,
+  Message,
+} from 'semantic-ui-react';
 
 import {FinalField} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
@@ -19,6 +29,7 @@ import {SortableWrapper, useSortableItem} from 'indico/react/sortable';
 import {indicoAxios, handleAxiosError} from 'indico/utils/axios';
 import {camelizeKeys} from 'indico/utils/case';
 import {makeAsyncDebounce} from 'indico/utils/debounce';
+import {Param} from 'indico/react/i18n';
 
 import {Translate} from './i18n';
 
@@ -198,6 +209,16 @@ export default function MultipleAffiliationsSelector({
           })) || [],
       }}
     >
+      <Message info>
+        <Icon name="info" />
+        <Translate>
+          Please contact{' '}
+          <Param name="email" wrapper={<a href="mailto:indico-support@jacow.org" />}>
+            indico-support@jacow.org
+          </Param>{' '}
+          if your affiliation is not available in the list.
+        </Translate>
+      </Message>
       <FinalField
         name="affiliationsData"
         component={MultipleAffiliationsField}
@@ -228,14 +249,12 @@ export function MultipleAffiliationsButton({person, onEdit, disabled, extraParam
         <IconGroup size="large">
           <Icon
             name="building"
-            color={
-              person.jacowAffiliationsIds && person.jacowAffiliationsIds.length ? 'blue' : 'grey'
-            }
+            color={person.jacowAffiliationsIds?.length ? 'blue' : 'grey'}
             onClick={() => onEdit('jacow_affiliations')}
             disabled={disabled || !person.email}
             link={!(disabled || !person.email)}
           />
-          {!person.jacowAffiliationsIds && (
+          {!person.jacowAffiliationsIds?.length && (
             <Icon
               name="exclamation circle"
               title={Translate.string('No affiliations added')}
