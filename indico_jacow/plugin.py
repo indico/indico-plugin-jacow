@@ -25,8 +25,10 @@ from indico.modules.events.models.persons import EventPerson
 from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
+from indico.modules.users.views import WPUser
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
+from indico.web.forms.fields import IndicoPasswordField
 from indico.web.forms.widgets import SwitchWidget
 from indico.web.menu import SideMenuItem
 
@@ -37,6 +39,7 @@ from indico_jacow.models.affiliations import AbstractAffiliation, ContributionAf
 class SettingsForm(IndicoForm):
     sync_enabled = BooleanField(_('Sync profiles'), widget=SwitchWidget(),
                                 description=_('Periodically sync user details with the central database'))
+    brevo_api_key = IndicoPasswordField(_('Brevo API key'), toggle=True)
 
 
 class JACOWPlugin(IndicoPlugin):
@@ -49,6 +52,7 @@ class JACOWPlugin(IndicoPlugin):
     settings_form = SettingsForm
     default_settings = {
         'sync_enabled': False,
+        'brevo_api_key': ''
     }
     default_event_settings = {
         'multiple_affiliations': False,
@@ -59,6 +63,7 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('abstract-list-options', self._inject_abstract_export_button)
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
+        self.template_hook('mailing-lists', self._inject_mailing_lists)
         self.connect(signals.core.add_form_fields, self._add_person_lists_settings, sender=ManagePersonListsForm)
         self.connect(signals.core.form_validated, self._person_lists_form_validated)
         self.connect(signals.core.form_validated, self._submission_form_validated)
@@ -70,7 +75,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
-               WPMyContributions, WPManagePapers)
+               WPMyContributions, WPManagePapers, WPUser)
         self.inject_bundle('main.js', wps)
         self.inject_bundle('main.css', wps)
 
@@ -88,6 +93,9 @@ class JACOWPlugin(IndicoPlugin):
         if (isinstance(person, (AbstractPersonLink, ContributionPersonLink)) and
                 self.event_settings.get(person.person.event, 'multiple_affiliations')):
             return render_plugin_template('custom_affiliation.html', person=person)
+        
+    def _inject_mailing_lists(self):
+        return render_plugin_template('mailing_lists.html')
 
     def _add_person_lists_settings(self, form_cls, form_kwargs, **kwargs):
         multiple_affiliations = self.event_settings.get(g.rh.event, 'multiple_affiliations')

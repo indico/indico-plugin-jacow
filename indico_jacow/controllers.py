@@ -33,6 +33,7 @@ from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.util.string import validate_email
 from indico.web.args import use_kwargs
 from indico.web.flask.util import url_for
+from indico.web.rh import RH
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
 
@@ -270,3 +271,11 @@ class RHPeerReviewCSVImport(RHManagePapersBase):
             'identifiers': identifiers,
             'unknown_emails': list(unknown_emails)
         })
+
+
+class RHMailingLists(RH):
+    def _process(self):
+        return [
+            {'name': 'Mailing List 1', 'subscribed': False},
+            {'name': 'Mailing List 2', 'subscribed': True},
+            ]
