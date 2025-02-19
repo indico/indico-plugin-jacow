@@ -156,7 +156,7 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
           onChange={addItem}
           onBlur={() => setSearchResults([])}
           selectOnBlur={false}
-          search
+          search={options => options}
           selection
           fluid
         />
