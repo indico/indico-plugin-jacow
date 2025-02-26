@@ -7,6 +7,7 @@
 
 import csv
 import io
+import json
 from collections import defaultdict
 from statistics import mean, pstdev
 
@@ -36,6 +37,9 @@ from indico.web.flask.util import url_for
 from indico.web.rh import RH
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
+
+import brevo_python
+from brevo_python.rest import ApiException
 
 
 def _get_boolean_questions(event):
@@ -275,7 +279,26 @@ class RHPeerReviewCSVImport(RHManagePapersBase):
 
 class RHMailingLists(RH):
     def _process(self):
-        return [
-            {'name': 'Mailing List 1', 'subscribed': False},
-            {'name': 'Mailing List 2', 'subscribed': True},
-            ]
+        from indico_jacow.plugin import JACOWPlugin
+
+        configuration_brevo = brevo_python.Configuration()
+        configuration_brevo.api_key['api-key'] = JACOWPlugin.settings.get('brevo_api_key')
+        api_instance = brevo_python.ContactsApi(brevo_python.ApiClient(configuration_brevo))
+
+        try:
+            api_response = api_instance.get_contact_info('bfbmwmo.thqlmfxb@gmail.com')
+            api_response_2 = api_instance.get_lists()
+        except ApiException as e:
+            print(f'Exception when calling ContactsApi->get_contact_info:{e}\n')
+
+        response_dict = api_response.to_dict()
+        response_2_dict = api_response_2.to_dict()
+
+        print(response_2_dict['lists'])
+        for lst in response_2_dict['lists']:
+            if lst['id'] in response_dict['list_ids']:
+                lst['subscribed'] = True
+
+        response_2_json = json.dumps(response_2_dict)
+
+        return response_2_json
