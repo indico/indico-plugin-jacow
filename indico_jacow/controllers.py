@@ -29,6 +29,7 @@ from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.modules.users import User
+from indico.modules.users.controllers import RHUserBase
 from indico.util.i18n import _
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.util.string import validate_email
@@ -277,28 +278,40 @@ class RHPeerReviewCSVImport(RHManagePapersBase):
         })
 
 
-class RHMailingLists(RH):
+class RHMailingLists(RHUserBase):
     def _process(self):
         from indico_jacow.plugin import JACOWPlugin
 
+        emails = self.user.all_emails
         configuration_brevo = brevo_python.Configuration()
         configuration_brevo.api_key['api-key'] = JACOWPlugin.settings.get('brevo_api_key')
         api_instance = brevo_python.ContactsApi(brevo_python.ApiClient(configuration_brevo))
+        
+        valid_contact_ids = set()
 
+        for email in emails:
+            try:
+                contact_info = api_instance.get_contact_info(email)  # Try fetching contact info
+                contact_data = contact_info.to_dict()  # Convert response to dictionary
+                if 'list_ids' in contact_data:
+                    valid_contact_ids.update(contact_data['list_ids'])  # Store valid list IDs
+                    print(valid_contact_ids)
+            except ApiException as e:
+                print(f"Warning: Contact {email} not found in Brevo. Skipping...")
+
+        # Get all Brevo lists
         try:
-            api_response = api_instance.get_contact_info('bfbmwmo.thqlmfxb@gmail.com')
             api_response_2 = api_instance.get_lists()
+            response_2_dict = api_response_2.to_dict()
         except ApiException as e:
-            print(f'Exception when calling ContactsApi->get_contact_info:{e}\n')
+            print(f"Exception when calling ContactsApi->get_lists: {e}")
+            return json.dumps({'error': 'Failed to retrieve lists'})
 
-        response_dict = api_response.to_dict()
-        response_2_dict = api_response_2.to_dict()
-
-        print(response_2_dict['lists'])
-        for lst in response_2_dict['lists']:
-            if lst['id'] in response_dict['list_ids']:
+        # Mark subscribed lists
+        for lst in response_2_dict.get('lists', []):
+            if lst['id'] in valid_contact_ids:
                 lst['subscribed'] = True
 
+        # Convert to JSON and return
         response_2_json = json.dumps(response_2_dict)
-
         return response_2_json
