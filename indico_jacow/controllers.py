@@ -11,7 +11,7 @@ import json
 from collections import defaultdict
 from statistics import mean, pstdev
 
-from flask import jsonify, session
+from flask import jsonify, session, request
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
@@ -278,34 +278,38 @@ class RHPeerReviewCSVImport(RHManagePapersBase):
         })
 
 
-class RHMailingLists(RHUserBase):
-    def _process(self):
+class RHBrevoAPI(RH):
+    def __init__(self):
         from indico_jacow.plugin import JACOWPlugin
 
-        emails = self.user.all_emails
+        super().__init__()
         configuration_brevo = brevo_python.Configuration()
         configuration_brevo.api_key['api-key'] = JACOWPlugin.settings.get('brevo_api_key')
-        api_instance = brevo_python.ContactsApi(brevo_python.ApiClient(configuration_brevo))
-        
+        self.api_instance = brevo_python.ContactsApi(brevo_python.ApiClient(configuration_brevo))
+
+
+class RHMailingLists(RHUserBase, RHBrevoAPI):
+    def _process(self):        
         valid_contact_ids = set()
+        emails = self.user.all_emails
 
         for email in emails:
             try:
-                contact_info = api_instance.get_contact_info(email)  # Try fetching contact info
-                contact_data = contact_info.to_dict()  # Convert response to dictionary
+                contact_info = self.api_instance.get_contact_info(email)
+                contact_data = contact_info.to_dict()
                 if 'list_ids' in contact_data:
-                    valid_contact_ids.update(contact_data['list_ids'])  # Store valid list IDs
-                    print(valid_contact_ids)
+                    valid_contact_ids.update(contact_data['list_ids'])
             except ApiException as e:
-                print(f"Warning: Contact {email} not found in Brevo. Skipping...")
+                print(f'Warning: Contact {email} not found in Brevo. Skipping...')
+                return {'error': e.reason}, e.status
 
         # Get all Brevo lists
         try:
-            api_response_2 = api_instance.get_lists()
+            api_response_2 = self.api_instance.get_lists()
             response_2_dict = api_response_2.to_dict()
         except ApiException as e:
-            print(f"Exception when calling ContactsApi->get_lists: {e}")
-            return json.dumps({'error': 'Failed to retrieve lists'})
+            print(f'Exception when calling ContactsApi->get_lists: {e.reason}')
+            return {'error': e.reason}, e.status
 
         # Mark subscribed lists
         for lst in response_2_dict.get('lists', []):
@@ -315,3 +319,55 @@ class RHMailingLists(RHUserBase):
         # Convert to JSON and return
         response_2_json = json.dumps(response_2_dict)
         return response_2_json
+
+
+class RHMailingListSubscribe(RHUserBase, RHBrevoAPI):
+    def _process(self):
+        email = self.user.email
+        print(email)
+        try:
+            list_id = int(request.args.get('list_id'))
+        except (ValueError, TypeError):
+            return {'error': 'Invalid or missing list_id. It must be an integer.'}, 400
+
+        try:
+            self.api_instance.get_contact_info(email)
+            try:
+                contact_email = brevo_python.AddContactToList(emails=[email])
+                response = self.api_instance.add_contact_to_list(list_id, contact_email)
+                return response.to_dict(), 200
+            except ApiException as e:
+                print(f'Could not add contact {email} to list {list_id} due to {e}')
+                return {'error': 'Failed to subscribe to the list.'}, e.status
+        except ApiException as e:
+            if e.status == 404:
+                try:
+                    create_contact = brevo_python.CreateContact(
+                        email=email,
+                        attributes={
+                            'FIRSTNAME': self.user.first_name,
+                            'LASTNAME': self.user.last_name,
+                        },
+                        list_ids=[list_id]
+                    )
+                    response = self.api_instance.create_contact(create_contact)
+                    return response.to_dict(), 200
+                except ApiException as e:
+                    print(f"Couldn't create contact for {email} and add it to the list {list_id} due to {e}")
+                    return {'error': 'Failed to create contact and subscribe to the list.'}, e.status
+
+
+class RHMailingListUnsubscribe(RHUserBase, RHBrevoAPI):
+    def _process(self):
+        contact_emails = brevo_python.RemoveContactFromList(emails=list(self.user.all_emails))
+        try:
+            list_id = int(request.args.get('list_id'))
+        except (ValueError, TypeError):
+            return {'error': 'Invalid or missing list_id. It must be an integer.'}, 400
+        
+        try:
+            api_response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
+            return api_response.to_dict(), 200
+        except Exception as e:
+            print(f'Error when removing contact(s) from list {list_id}: {e}')
+            return {'error': 'Failed to unsubscribe from the list.'}, 500

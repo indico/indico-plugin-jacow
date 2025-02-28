@@ -6,6 +6,8 @@
 // the LICENSE file for more details.
 
 import getMailingListsURL from 'indico-url:plugin_jacow.mailing_lists';
+import mailingListSubscribeURL from 'indico-url:plugin_jacow.mailing_lists_subscribe';
+import mailingListUnsubscribeURL from 'indico-url:plugin_jacow.mailing_lists_unsubscribe';
 
 // import PropTypes from 'prop-types'
 import React, {useState, useEffect} from 'react';
@@ -32,6 +34,32 @@ export function MailingListCheckList() {
     fetchMailingLists();
   }, []);
 
+  const subscribeList = async listId => {
+    try {
+      const response = await indicoAxios.post(mailingListSubscribeURL({list_id: listId}));
+      if (response.status === 200) {
+        setMailingLists(prevLists =>
+          prevLists.map(list => (list.id === listId ? {...list, subscribed: true} : list))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const unsubscribeList = async listId => {
+    try {
+      const response = await indicoAxios.post(mailingListUnsubscribeURL({list_id: listId}));
+      if (response.status === 200) {
+        setMailingLists(prevLists =>
+          prevLists.map(list => (list.id === listId ? {...list, subscribed: false} : list))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="i-box" style={{marginTop: '15px'}}>
       <div className="i-box-header">
@@ -46,12 +74,23 @@ export function MailingListCheckList() {
               <ListContent>{list.name}</ListContent>
               <ListContent>
                 {list.subscribed ? (
-                  <Button icon labelPosition="left" className="subscribe-btn">
+                  <Button
+                    icon
+                    labelPosition="left"
+                    className="subscribe-btn"
+                    onClick={() => unsubscribeList(list.id)}
+                  >
                     <Icon name="minus" />
                     <Translate>Unsubscribe</Translate>
                   </Button>
                 ) : (
-                  <Button icon labelPosition="left" primary className="subscribe-btn">
+                  <Button
+                    icon
+                    labelPosition="left"
+                    primary
+                    className="subscribe-btn"
+                    onClick={() => subscribeList(list.id)}
+                  >
                     <Icon name="plus" />
                     <Translate>Subscribe</Translate>
                   </Button>
