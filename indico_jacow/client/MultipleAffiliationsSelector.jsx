@@ -25,11 +25,11 @@ import {
 
 import {FinalField} from 'indico/react/forms';
 import {FinalModalForm} from 'indico/react/forms/final-form';
+import {Param} from 'indico/react/i18n';
 import {SortableWrapper, useSortableItem} from 'indico/react/sortable';
 import {indicoAxios, handleAxiosError} from 'indico/utils/axios';
 import {camelizeKeys} from 'indico/utils/case';
 import {makeAsyncDebounce} from 'indico/utils/debounce';
-import {Param} from 'indico/react/i18n';
 
 import {Translate} from './i18n';
 
@@ -212,11 +212,18 @@ export default function MultipleAffiliationsSelector({
       <Message info>
         <Icon name="info" />
         <Translate>
-          Please contact{' '}
+          If your affiliation is not listed, please check the{' '}
+          <Param
+            name="ROR"
+            wrapper={<a href="https://ror.org/registry/#submitting-registry-updates" />}
+          >
+            ROR registry
+          </Param>{' '}
+          and request to have your institution added. Once completed, contact{' '}
           <Param name="email" wrapper={<a href="mailto:indico-support@jacow.org" />}>
             indico-support@jacow.org
           </Param>{' '}
-          if your affiliation is not available in the list.
+          for further assistance.
         </Translate>
       </Message>
       <FinalField
