@@ -5,6 +5,8 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
+@use 'design_system';
+
 :global(.ui.list .item.mailing) {
     display: flex !important;
     justify-content: space-between;

@@ -74,6 +74,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
+        self.connect(signals.menu.items, self._extend_user_profile_menu, sender='user-profile-sidemenu')
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
                WPMyContributions, WPManagePapers, WPUser)
         self.inject_bundle('main.js', wps)
@@ -187,6 +188,10 @@ class JACOWPlugin(IndicoPlugin):
             return
         return SideMenuItem('abstracts_stats', _('CfA Statistics'),
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
+    
+    def _extend_user_profile_menu(self, sender, user, **kwargs):
+        yield SideMenuItem('mailing_lists', _('Mailing Lists'),
+                           url_for_plugin('jacow.mailing_lists', user), 65, disabled=user.is_system)
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         if hasattr(g, 'jacow_affiliations_ids'):

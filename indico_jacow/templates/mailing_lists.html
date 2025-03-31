@@ -1,4 +1,8 @@
-<div id="mailing-lists"></div>
-<script>
-    setupMailingListChecklist(document.querySelector('#mailing-lists'));
-</script>
+{% extends 'users/base.html' %}
+
+{% block user_content %}
+    <div id="mailing-lists"></div>
+    <script>
+        setupMailingList(document.querySelector('#mailing-lists'), {{ mailing_lists | tojson }});
+    </script>
+{% endblock %}

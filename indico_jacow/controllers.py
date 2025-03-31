@@ -38,6 +38,7 @@ from indico.web.flask.util import url_for
 from indico.web.rh import RH
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
+from indico_jacow.views import WPUserMailingLists
 
 import brevo_python
 from brevo_python.rest import ApiException
@@ -315,10 +316,13 @@ class RHMailingLists(RHUserBase, RHBrevoAPI):
         for lst in response_2_dict.get('lists', []):
             if lst['id'] in valid_contact_ids:
                 lst['subscribed'] = True
+            else:
+                lst['subscribed'] = False
 
         # Convert to JSON and return
-        response_2_json = json.dumps(response_2_dict)
-        return response_2_json
+        mailing_lists = json.dumps(response_2_dict)
+        return WPUserMailingLists.render_template('mailing_lists.html', 'mailing_lists', user=self.user,
+                                                  mailing_lists=mailing_lists)
 
 
 class RHMailingListSubscribe(RHUserBase, RHBrevoAPI):

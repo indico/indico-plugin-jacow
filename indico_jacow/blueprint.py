@@ -37,7 +37,7 @@ blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_i
 # Mailing preferences
 
 # Mailing lists
-blueprint.add_url_rule('!/users/emails/mailing-lists', 'mailing_lists', RHMailingLists, methods=('GET',))
+blueprint.add_url_rule('!/users/emails/mailing-lists', 'mailing_lists', RHMailingLists)
 blueprint.add_url_rule('!/users/emails/mailing-lists/subscribe', 'mailing_lists_subscribe',
                        RHMailingListSubscribe, methods=('POST',))
 blueprint.add_url_rule('!/users/emails/mailing-lists/unsubscribe', 'mailing_lists_unsubscribe',
