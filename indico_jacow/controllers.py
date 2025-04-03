@@ -314,10 +314,7 @@ class RHMailingLists(RHUserBase, RHBrevoAPI):
 
         # Mark subscribed lists
         for lst in response_2_dict.get('lists', []):
-            if lst['id'] in valid_contact_ids:
-                lst['subscribed'] = True
-            else:
-                lst['subscribed'] = False
+            lst['subscribed'] = lst['id'] in valid_contact_ids
 
         # Convert to JSON and return
         mailing_lists = json.dumps(response_2_dict)
