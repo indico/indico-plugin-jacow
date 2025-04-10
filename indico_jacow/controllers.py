@@ -11,7 +11,7 @@ import json
 from collections import defaultdict
 from statistics import mean, pstdev
 
-from flask import jsonify, session, request
+from flask import jsonify, session
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
@@ -35,7 +35,6 @@ from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.util.string import validate_email
 from indico.web.args import use_kwargs
 from indico.web.flask.util import url_for
-from indico.web.rh import RH
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
 from indico_jacow.views import WPUserMailingLists
@@ -345,9 +344,9 @@ class RHMailingListSubscribe(RHUserBase, BrevoAPIMixin):
         else:
             try:
                 response = self.create_contact(
-                    email=email, 
+                    email=email,
                     first_name=self.user.first_name,
-                    last_name=self.user.last_name, 
+                    last_name=self.user.last_name,
                     list_ids=lists_ids)
                 return response.to_dict(), 200
             except ApiException as e:
