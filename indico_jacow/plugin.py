@@ -63,7 +63,6 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('abstract-list-options', self._inject_abstract_export_button)
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
-        self.template_hook('mailing-lists', self._inject_mailing_lists)
         self.connect(signals.core.add_form_fields, self._add_person_lists_settings, sender=ManagePersonListsForm)
         self.connect(signals.core.form_validated, self._person_lists_form_validated)
         self.connect(signals.core.form_validated, self._submission_form_validated)
@@ -94,9 +93,6 @@ class JACOWPlugin(IndicoPlugin):
         if (isinstance(person, (AbstractPersonLink, ContributionPersonLink)) and
                 self.event_settings.get(person.person.event, 'multiple_affiliations')):
             return render_plugin_template('custom_affiliation.html', person=person)
-        
-    def _inject_mailing_lists(self):
-        return render_plugin_template('mailing_lists.html')
 
     def _add_person_lists_settings(self, form_cls, form_kwargs, **kwargs):
         multiple_affiliations = self.event_settings.get(g.rh.event, 'multiple_affiliations')
