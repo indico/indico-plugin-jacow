@@ -31,7 +31,7 @@ export function MailingList({mailingLists}) {
 
   const subscribeList = async listsIds => {
     try {
-      const response = await indicoAxios.post(mailingListSubscribeURL({lists_ids: listsIds}));
+      const response = await indicoAxios.post(mailingListSubscribeURL(), {lists_ids: listsIds});
       if (response.status === 200) {
         setSubMailingLists(prevLists =>
           prevLists.map(list => (list.id === listsIds ? {...list, subscribed: true} : list))
@@ -44,7 +44,7 @@ export function MailingList({mailingLists}) {
 
   const unsubscribeList = async listsIds => {
     try {
-      const response = await indicoAxios.post(mailingListUnsubscribeURL({lists_ids: listsIds}));
+      const response = await indicoAxios.post(mailingListUnsubscribeURL(), {lists_ids: listsIds});
       if (response.status === 200) {
         setNotSubMailingLists(prevLists =>
           prevLists.map(list => (list.id === listsIds ? {...list, subscribed: false} : list))
