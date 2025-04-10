@@ -11,13 +11,15 @@ import json
 from collections import defaultdict
 from statistics import mean, pstdev
 
+import brevo_python
+from brevo_python.rest import ApiException
 from flask import jsonify, session
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
 
 from indico.core.db import db
-from indico.core.errors import UserValueError, IndicoError
+from indico.core.errors import IndicoError, UserValueError
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.controllers.base import RHAbstractsBase
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
@@ -36,11 +38,7 @@ from indico.util.string import validate_email
 from indico.web.args import use_kwargs
 from indico.web.flask.util import url_for
 
-from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
-from indico_jacow.views import WPUserMailingLists
-
-import brevo_python
-from brevo_python.rest import ApiException
+from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics, WPUserMailingLists
 
 
 def _get_boolean_questions(event):

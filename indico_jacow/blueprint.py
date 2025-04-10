@@ -9,8 +9,8 @@ from indico.core.plugins import IndicoPluginBlueprint
 
 from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
                                       RHContributionsExportCSV, RHContributionsExportExcel,
-                                      RHDisplayAbstractsStatistics, RHPeerReviewCSVImport, RHMailingLists,
-                                      RHMailingListSubscribe, RHMailingListUnsubscribe)
+                                      RHDisplayAbstractsStatistics, RHMailingLists, RHMailingListSubscribe,
+                                      RHMailingListUnsubscribe, RHPeerReviewCSVImport)
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
