@@ -52,7 +52,7 @@ class JACOWPlugin(IndicoPlugin):
     settings_form = SettingsForm
     default_settings = {
         'sync_enabled': False,
-        'brevo_api_key': ''
+        'brevo_api_key': '',
     }
     default_event_settings = {
         'multiple_affiliations': False,
@@ -186,7 +186,7 @@ class JACOWPlugin(IndicoPlugin):
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
     
     def _extend_user_profile_menu(self, sender, user, **kwargs):
-        yield SideMenuItem('mailing_lists', _('Mailing Lists'),
+        return SideMenuItem('mailing_lists', _('Mailing Lists'),
                            url_for_plugin('jacow.mailing_lists', user), 65, disabled=user.is_system)
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
