@@ -66,6 +66,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.event.person_required_fields, self._person_required_fields)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
+        self.connect(signals.event.contribution_created, self._contribution_created)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
@@ -163,6 +164,16 @@ class JACOWPlugin(IndicoPlugin):
                                                                          display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
+
+    def _contribution_created(self, contrib, cloned_from=None, person_link_map=None, **kwargs):
+        if not cloned_from:
+            # not a clone
+            return
+        for old_pl, new_pl in person_link_map.items():
+            new_pl.jacow_affiliations = [
+                ContributionAffiliation(affiliation=x.affiliation, display_order=x.display_order)
+                for x in old_pl.jacow_affiliations
+            ]
 
     def _extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):
