@@ -8,6 +8,7 @@
 from sqlalchemy.ext.declarative import declared_attr
 
 from indico.core.db.sqlalchemy import db
+from indico.util.string import format_repr
 
 
 class JACoWAffiliationBase(db.Model):
@@ -79,6 +80,9 @@ class JACoWAffiliationBase(db.Model):
     def details(self):
         from indico.modules.users.schemas import AffiliationSchema
         return AffiliationSchema().dump(self.affiliation)
+
+    def __repr__(self):
+        return format_repr(self, 'person_link_id', 'affiliation_id')
 
 
 class AbstractAffiliation(JACoWAffiliationBase):
