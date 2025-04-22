@@ -66,6 +66,9 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.event.person_required_fields, self._person_required_fields)
         self.connect(signals.event.abstract_accepted, self._abstract_accepted)
         self.connect(signals.event.sidemenu, self._extend_event_menu)
+        self.connect(signals.event.contribution_created, self._contribution_created)
+        self.connect(signals.event.cloned, self._event_cloned)
+        self.connect(signals.event.imported, self._event_imported)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
@@ -163,6 +166,41 @@ class JACOWPlugin(IndicoPlugin):
                                                                          display_order=ja.display_order)
                                                  for ja in abstract_person.jacow_affiliations]
         db.session.flush()
+
+    def _event_imported(self, target_event, source_event, used_cloners, shared_data, **kwargs):
+        # XXX We do not force-enable the `multiple_affiliations` here, because importing from another
+        # event is uncommon (probably not used at all on jacow) and enabling this setting silently
+        # would be rather strange, especially as it cannot be disabled afterwards.
+        if 'contributions' in used_cloners:
+            try:
+                person_link_map = shared_data['contributions']['person_link_map']
+            except (KeyError, TypeError):
+                return
+            self._clone_contribution_affiliations(person_link_map)
+
+    def _event_cloned(self, event, new_event, used_cloners, shared_data, **kwargs):
+        self.event_settings.set(new_event, 'multiple_affiliations',
+                                self.event_settings.get(event, 'multiple_affiliations'))
+        if 'contributions' in used_cloners:
+            try:
+                person_link_map = shared_data['contributions']['person_link_map']
+            except (KeyError, TypeError):
+                return
+            self._clone_contribution_affiliations(person_link_map)
+
+    def _contribution_created(self, contrib, cloned_from=None, person_link_map=None, **kwargs):
+        if not cloned_from or g.get('importing_event'):
+            # not a clone or importing the timetable/contributions of an event in which case this
+            # runs multiple time with the full person link map, and would cause duplicates
+            return
+        self._clone_contribution_affiliations(person_link_map)
+
+    def _clone_contribution_affiliations(self, person_link_map):
+        for old_pl, new_pl in person_link_map.items():
+            for x in old_pl.jacow_affiliations:
+                # XXX for some reason, during an event clone, the `person_link_id` is sent to the DB as NULL
+                # when using the usual `new_pl.jacow_affiliations = ...` way of assigning these objects
+                ContributionAffiliation(person_link=new_pl, affiliation=x.affiliation, display_order=x.display_order)
 
     def _extend_event_menu(self, sender, **kwargs):
         def _statistics_visible(event):
