@@ -219,10 +219,8 @@ class JACOWPlugin(IndicoPlugin):
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
-        if hasattr(g, 'jacow_affiliations_ids'):
-            g.jacow_affiliations_ids[data['email'].lower()] = data.get('jacow_affiliations_ids', [])
-        else:
-            g.jacow_affiliations_ids = {data['email'].lower(): data.get('jacow_affiliations_ids', [])}
+        jacow_affiliations_ids = g.setdefault('jacow_affiliations_ids', {})
+        jacow_affiliations_ids[data['email'].lower()] = data.get('jacow_affiliations_ids', [])
 
     def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
         if not all(isinstance(p, (AbstractPersonLink, ContributionPersonLink)) for p in orig):
