@@ -9,7 +9,8 @@ from indico.core.plugins import IndicoPluginBlueprint
 
 from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
                                       RHContributionsExportCSV, RHContributionsExportExcel,
-                                      RHDisplayAbstractsStatistics, RHPeerReviewCSVImport)
+                                      RHDisplayAbstractsStatistics, RHMailingLists, RHMailingListSubscribe,
+                                      RHMailingListUnsubscribe, RHPeerReviewCSVImport)
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
@@ -32,3 +33,12 @@ blueprint.add_url_rule('/manage/contributions/contributions_custom.xlsx', 'contr
 # Peer reviewing CSV import
 blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_import', RHPeerReviewCSVImport,
                        methods=('POST',))
+
+# Mailing preferences
+
+# Mailing lists
+blueprint.add_url_rule('!/users/emails/mailing-lists', 'mailing_lists', RHMailingLists)
+blueprint.add_url_rule('!/users/emails/mailing-lists/subscribe', 'mailing_lists_subscribe',
+                       RHMailingListSubscribe, methods=('POST',))
+blueprint.add_url_rule('!/users/emails/mailing-lists/unsubscribe', 'mailing_lists_unsubscribe',
+                       RHMailingListUnsubscribe, methods=('POST',))
