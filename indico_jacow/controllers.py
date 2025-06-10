@@ -14,6 +14,7 @@ from statistics import mean, pstdev
 import brevo_python
 from brevo_python.rest import ApiException
 from flask import jsonify, session
+from flask_pluginengine import current_plugin
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
@@ -32,11 +33,18 @@ from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
 from indico.modules.users import User
 from indico.modules.users.controllers import RHUserBase
+from indico.modules.users.models.affiliations import Affiliation
+from indico.modules.users.schemas import AffiliationSchema
+from indico.modules.users.util import search_affiliations
+from indico.util.countries import get_countries, get_country
+from indico.util.date_time import now_utc
 from indico.util.i18n import _
+from indico.util.marshmallow import not_empty, validate_with_message
 from indico.util.spreadsheets import send_csv, send_xlsx
-from indico.util.string import validate_email
-from indico.web.args import use_kwargs
+from indico.util.string import remove_accents, str_to_ascii, validate_email
+from indico.web.args import use_args, use_kwargs
 from indico.web.flask.util import url_for
+from indico.web.rh import RH, RHProtected
 
 from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics, WPUserMailingLists
 
@@ -382,3 +390,34 @@ class RHMailingListUnsubscribe(RHUserBase, BrevoAPIMixin):
                 print(f'Could not unsubscribe from list {list_id} due to {e}')
                 errors.append({'list_id': list_id, 'message': str(e)})
         return results, errors
+
+
+class RHCountries(RH):
+    def _process(self):
+        return jsonify(sorted(get_countries().items(), key=lambda x: str_to_ascii(remove_accents(x[1]))))
+
+
+class RHCreateAffiliation(RHProtected):
+    @use_args({
+        'name': fields.String(required=True, validate=not_empty),
+        'alt_names': fields.List(fields.String(validate=not_empty)),
+        'city': fields.String(required=True, validate=not_empty),
+        'country_code': fields.String(required=True,
+                                      validate=validate_with_message(lambda val: get_country(val) is not None,
+                                                                     'Invalid country')),
+    })
+    def _process(self, data):
+        aff = Affiliation.get_or_create_from_data(data)
+        if aff in db.session:
+            # already exists -> just use that one
+            return AffiliationSchema().jsonify(aff)
+        aff.meta = {
+            'created_by': session.user.id,
+            'created_dt': now_utc(False).isoformat(),
+            'verified': False,
+        }
+        db.session.add(aff)
+        db.session.flush()
+        current_plugin.logger.info('Affiliation %r created by %r', aff, session.user)
+        search_affiliations.bump_version()
+        return AffiliationSchema().jsonify(aff)

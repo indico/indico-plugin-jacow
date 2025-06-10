@@ -5,8 +5,11 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
+import countriesURL from 'indico-url:plugin_jacow.countries';
+import createAffiliationURL from 'indico-url:plugin_jacow.create_affiliation';
 import searchAffiliationURL from 'indico-url:users.api_affiliations';
 
+import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import {DndProvider} from 'react-dnd';
@@ -23,8 +26,9 @@ import {
   Message,
 } from 'semantic-ui-react';
 
-import {FinalField} from 'indico/react/forms';
-import {FinalModalForm} from 'indico/react/forms/final-form';
+import {FinalInput, FinalDropdown, FinalField} from 'indico/react/forms';
+import {FinalModalForm, handleSubmitError} from 'indico/react/forms/final-form';
+import {useIndicoAxios} from 'indico/react/hooks';
 import {Param} from 'indico/react/i18n';
 import {SortableWrapper, useSortableItem} from 'indico/react/sortable';
 import {indicoAxios, handleAxiosError} from 'indico/utils/axios';
@@ -85,6 +89,7 @@ DraggableAffiliation.propTypes = {
 };
 
 const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
+  const [searchUsed, setSearchUsed] = useState(false);
   const [_searchResults, setSearchResults] = useState([]);
   const searchResults = [
     ...currentAffiliations,
@@ -112,6 +117,7 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
       return;
     }
     setSearchResults(camelizeKeys(resp.data));
+    setSearchUsed(true);
   };
 
   const addItem = (evt, {value: newId}) => {
@@ -127,42 +133,68 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <Segment attached="top">
-        <SortableWrapper accept="affiliation">
-          <List divided relaxed>
-            {value.length > 0 ? (
-              value.map((affiliation, idx) => (
-                <DraggableAffiliation
-                  key={affiliation.id}
-                  index={idx}
-                  onMove={moveItem}
-                  affiliation={affiliation}
-                  onDelete={() => onChange(value.filter((_, i) => i !== idx))}
+    <>
+      <DndProvider backend={HTML5Backend}>
+        <Segment attached="top">
+          <SortableWrapper accept="affiliation">
+            <List divided relaxed>
+              {value.length > 0 ? (
+                value.map((affiliation, idx) => (
+                  <DraggableAffiliation
+                    key={affiliation.id}
+                    index={idx}
+                    onMove={moveItem}
+                    affiliation={affiliation}
+                    onDelete={() => onChange(value.filter((_, i) => i !== idx))}
+                  />
+                ))
+              ) : (
+                <Translate>There are no affiliations</Translate>
+              )}
+            </List>
+          </SortableWrapper>
+        </Segment>
+        <Segment attached="bottom">
+          <Dropdown
+            icon="search"
+            placeholder={Translate.string('Add affiliations...')}
+            options={affiliationOptions}
+            onSearchChange={searchChange}
+            onChange={addItem}
+            onBlur={() => setSearchResults([])}
+            selectOnBlur={false}
+            selectOnNavigation={false}
+            search={options => options}
+            selection
+            fluid
+          />
+        </Segment>
+      </DndProvider>
+      {searchUsed && (
+        <Message info>
+          <Translate>
+            If you cannot find your affiliation, it may not yet be part of the{' '}
+            <Param name="ror" wrapper={<a href="https://ror.org/" />}>
+              ROR registry
+            </Param>{' '}
+            from which Indico gets its list of affiliations. Please{' '}
+            <Param
+              name="add_affiliation"
+              wrapper={
+                <AddAffiliation
+                  onAdded={aff => {
+                    onChange([...value, {id: aff.id, text: aff.name, meta: aff}]);
+                  }}
                 />
-              ))
-            ) : (
-              <Translate>There are no affiliations</Translate>
-            )}
-          </List>
-        </SortableWrapper>
-      </Segment>
-      <Segment attached="bottom">
-        <Dropdown
-          icon="search"
-          placeholder={Translate.string('Add affiliations...')}
-          options={affiliationOptions}
-          onSearchChange={searchChange}
-          onChange={addItem}
-          onBlur={() => setSearchResults([])}
-          selectOnBlur={false}
-          selectOnNavigation={false}
-          search={options => options}
-          selection
-          fluid
-        />
-      </Segment>
-    </DndProvider>
+              }
+            >
+              add it to Indico yourself
+            </Param>
+            .
+          </Translate>
+        </Message>
+      )}
+    </>
   );
 };
 
@@ -210,23 +242,6 @@ export default function MultipleAffiliationsSelector({
           })) || [],
       }}
     >
-      <Message info>
-        <Icon name="info" />
-        <Translate>
-          If your affiliation is not listed, please check the{' '}
-          <Param
-            name="ROR"
-            wrapper={<a href="https://ror.org/registry/#submitting-registry-updates" />}
-          >
-            ROR registry
-          </Param>{' '}
-          and request to have your institution added. Once completed, contact{' '}
-          <Param name="email" wrapper={<a href="mailto:indico-support@jacow.org" />}>
-            indico-support@jacow.org
-          </Param>{' '}
-          for further assistance.
-        </Translate>
-      </Message>
       <FinalField
         name="affiliationsData"
         component={MultipleAffiliationsField}
@@ -243,6 +258,151 @@ MultipleAffiliationsSelector.propTypes = {
   onClose: PropTypes.func.isRequired,
   modalOpen: PropTypes.string.isRequired,
   extraParams: extraParamsSchema.isRequired,
+};
+
+const isoToFlag = country =>
+  String.fromCodePoint(...country.split('').map(c => c.charCodeAt() + 0x1f1a5));
+
+function StringListField({value, disabled, onChange, onFocus, onBlur, placeholder}) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const isValid = v => !!v.trim();
+  const options = value.filter(isValid).map(x => ({text: x, value: x}));
+
+  const setValue = newValue => {
+    newValue = _.uniq(newValue.filter(isValid));
+    onChange(newValue);
+    onFocus();
+    onBlur();
+  };
+
+  const handleChange = (e, {value: newValue}) => {
+    if (newValue.length && newValue[newValue.length - 1] === searchQuery) {
+      setSearchQuery('');
+    }
+    setValue(newValue);
+  };
+
+  const handleSearchChange = (e, {searchQuery: newSearchQuery}) => {
+    setSearchQuery(newSearchQuery);
+  };
+
+  const handleBlur = () => {
+    if (isValid(searchQuery)) {
+      setValue([...value, searchQuery.trim()]);
+      setSearchQuery('');
+    }
+  };
+
+  return (
+    <Dropdown
+      options={options}
+      value={value}
+      searchQuery={searchQuery}
+      disabled={disabled}
+      searchInput={{onFocus, onBlur, type: 'text'}}
+      search
+      selection
+      multiple
+      allowAdditions
+      fluid
+      open={!!searchQuery}
+      placeholder={placeholder}
+      additionLabel={Translate.string('Add') + ' '} // eslint-disable-line prefer-template
+      onChange={handleChange}
+      onSearchChange={handleSearchChange}
+      onBlur={handleBlur}
+      selectedLabel={null}
+      icon=""
+    />
+  );
+}
+
+StringListField.propTypes = {
+  value: PropTypes.arrayOf(PropTypes.string).isRequired,
+  placeholder: PropTypes.string,
+  disabled: PropTypes.bool.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onFocus: PropTypes.func.isRequired,
+  onBlur: PropTypes.func.isRequired,
+};
+
+function AddAffiliation({children, onAdded}) {
+  const {data: countries} = useIndicoAxios(countriesURL());
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const onSubmit = async data => {
+    let resp;
+    try {
+      resp = await indicoAxios.post(createAffiliationURL(), data);
+    } catch (e) {
+      return handleSubmitError(e);
+    }
+    onAdded(resp.data);
+    setModalOpen(false);
+  };
+
+  return (
+    <>
+      <a onClick={() => setModalOpen(true)}>
+        <strong>{children}</strong>
+      </a>
+      {modalOpen && (
+        <FinalModalForm
+          id="add-affiliation"
+          size="tiny"
+          onClose={() => setModalOpen(false)}
+          onSubmit={onSubmit}
+          initialValues={{alt_names: []}}
+          header={Translate.string('Create new affiliation')}
+          submitLabel={Translate.string('Create')}
+        >
+          <Message visible warning>
+            <Translate>
+              Please fill in this form carefully to avoid typos. Double-check that the name of the
+              institute/company is the official name, and add commonly used alternative names such
+              as acroyms in the "alternative names" field (one per line), this will help people find
+              the one you're adding instead of creating a duplicate one. DO NOT add affiliations
+              using this form unless you searched for them first and could not find them!
+            </Translate>
+          </Message>
+          <FinalInput
+            name="name"
+            label={Translate.string('Official name')}
+            placeholder={Translate.string('e.g. European Organization for Nuclear Research')}
+            type="text"
+            required
+          />
+          <FinalField
+            name="alt_names"
+            label={Translate.string('Alternative names')}
+            placeholder={Translate.string('e.g. CERN')}
+            component={StringListField}
+            isEqual={_.isEqual}
+          />
+          <FinalInput name="city" label={Translate.string('City')} type="text" required />
+          <FinalDropdown
+            name="country_code"
+            label={Translate.string('Country')}
+            required
+            fluid
+            selection
+            placeholder={Translate.string('Select a country')}
+            parse={x => x}
+            options={(countries ?? []).map(([name, title]) => ({
+              key: name,
+              value: name,
+              text: `${isoToFlag(name)} ${title}`,
+            }))}
+          />
+        </FinalModalForm>
+      )}
+    </>
+  );
+}
+
+AddAffiliation.propTypes = {
+  children: PropTypes.node,
+  onAdded: PropTypes.func.isRequired,
 };
 
 export function MultipleAffiliationsButton({person, onEdit, disabled, extraParams}) {
