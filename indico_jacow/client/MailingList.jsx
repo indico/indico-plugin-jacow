@@ -32,11 +32,19 @@ export function MailingList({mailingLists}) {
   const subscribeList = async listsIds => {
     try {
       const response = await indicoAxios.post(mailingListSubscribeURL(), {lists_ids: listsIds});
-      if (response.status === 200) {
-        setSubMailingLists(prevLists =>
-          prevLists.map(list => (list.id === listsIds ? {...list, subscribed: true} : list))
-        );
-      }
+      const {results, errors} = response.data;
+      console.log(response.data);
+
+      const successfullySubscribed = results.map(result => result.list_id);
+
+      setNotSubMailingLists(prevLists =>
+        prevLists.filter(list => !successfullySubscribed.includes(list.id))
+      );
+      setSubMailingLists(prevLists =>
+        prevLists.concat(
+          mailingLists.lists.filter(list => successfullySubscribed.includes(list.id))
+        )
+      );
     } catch (e) {
       console.error(e);
     }
@@ -45,11 +53,18 @@ export function MailingList({mailingLists}) {
   const unsubscribeList = async listsIds => {
     try {
       const response = await indicoAxios.post(mailingListUnsubscribeURL(), {lists_ids: listsIds});
-      if (response.status === 200) {
-        setNotSubMailingLists(prevLists =>
-          prevLists.map(list => (list.id === listsIds ? {...list, subscribed: false} : list))
-        );
-      }
+      const {results, errors} = response.data;
+      console.log(response);
+      const successfullyUnsubscribed = results.map(result => result.list_id);
+
+      setSubMailingLists(prevLists =>
+        prevLists.filter(list => !successfullyUnsubscribed.includes(list.id))
+      );
+      setNotSubMailingLists(prevLists =>
+        prevLists.concat(
+          mailingLists.lists.filter(list => successfullyUnsubscribed.includes(list.id))
+        )
+      );
     } catch (e) {
       console.error(e);
     }
@@ -159,10 +174,6 @@ MailingList.propTypes = {
 };
 
 window.setupMailingList = (elem, subMailingLists) => {
-  try {
-    subMailingLists = JSON.parse(subMailingLists);
-  } catch (error) {
-    console.error('Invalid JSON:', error);
-  }
+  subMailingLists = JSON.parse(subMailingLists);
   ReactDOM.render(<MailingList mailingLists={subMailingLists} />, elem);
 };
