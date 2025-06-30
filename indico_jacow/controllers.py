@@ -420,4 +420,4 @@ class RHMailingListUnsubscribe(RHUserBase, BrevoAPIMixin):
             except Exception as e:
                 print(f'Could not unsubscribe from list {list_id} due to {e}')
                 errors.append({'list_id': list_id, 'message': str(e)})
-        return results, errors
+        return {'results': results, 'errors': errors}, 200 if not errors else 207
