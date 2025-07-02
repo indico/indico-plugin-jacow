@@ -18,7 +18,6 @@ import {Translate} from 'indico/react/i18n';
 import {indicoAxios} from 'indico/utils/axios';
 
 import './MailingList.module.scss';
-import {set} from 'lodash';
 
 export function MailingList({mailingLists}) {
   const [subMailingLists, setSubMailingLists] = useState(
