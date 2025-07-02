@@ -18,6 +18,7 @@ import {Translate} from 'indico/react/i18n';
 import {indicoAxios} from 'indico/utils/axios';
 
 import './MailingList.module.scss';
+import {set} from 'lodash';
 
 export function MailingList({mailingLists}) {
   const [subMailingLists, setSubMailingLists] = useState(
@@ -45,6 +46,8 @@ export function MailingList({mailingLists}) {
           mailingLists.lists.filter(list => successfullySubscribed.includes(list.id))
         )
       );
+
+      setSelectedNotSubscribed([]);
     } catch (e) {
       console.error(e);
     }
@@ -65,6 +68,8 @@ export function MailingList({mailingLists}) {
           mailingLists.lists.filter(list => successfullyUnsubscribed.includes(list.id))
         )
       );
+
+      setSelectedSubscribed([]);
     } catch (e) {
       console.error(e);
     }
