@@ -111,7 +111,6 @@ export function MailingList({mailingLists}) {
               fluid
               icon
               labelPosition="left"
-              className="unsubscribe-btn"
               onClick={() => unsubscribeList(selectedSubscribed)}
               disabled={selectedSubscribed.length === 0}
             >
@@ -150,9 +149,8 @@ export function MailingList({mailingLists}) {
               icon
               labelPosition="left"
               primary
-              className="unsubscribe-btn"
-              onClick={() => unsubscribeList(selectedSubscribed)}
-              disabled={selectedSubscribed.length === 0}
+              onClick={() => subscribeList(selectedNotSubscribed)}
+              disabled={selectedNotSubscribed.length === 0}
             >
               <Icon name="minus" />
               <Translate>Subscribe</Translate>
