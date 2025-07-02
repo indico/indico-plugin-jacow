@@ -12,7 +12,7 @@ import mailingListUnsubscribeURL from 'indico-url:plugin_jacow.mailing_lists_uns
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
-import {Button, ListItem, Icon, ListContent, List, Checkbox} from 'semantic-ui-react';
+import {Button, ListItem, Icon, ListContent, List, Checkbox, Modal} from 'semantic-ui-react';
 
 import {Translate} from 'indico/react/i18n';
 import {indicoAxios} from 'indico/utils/axios';
@@ -88,11 +88,11 @@ export function MailingList({mailingLists}) {
       <div className="i-box">
         <div className="i-box-header">
           <div className="i-box-title">
-            <Translate>Subscribed Lists</Translate>
+            <Translate>My Lists</Translate>
           </div>
         </div>
         <div className="i-box-content">
-          <List divided size="big">
+          <List divided relaxed size="big">
             {subMailingLists.map(list => (
               <ListItem className="mailing" key={list.id}>
                 <ListContent>
@@ -105,19 +105,20 @@ export function MailingList({mailingLists}) {
                 </ListContent>
               </ListItem>
             ))}
-            <ListItem>
-              <Button
-                icon
-                labelPosition="left"
-                className="unsubscribe-btn"
-                onClick={() => unsubscribeList(selectedSubscribed)}
-                disabled={selectedSubscribed.length === 0}
-              >
-                <Icon name="minus" />
-                <Translate>Unsubscribe</Translate>
-              </Button>
-            </ListItem>
           </List>
+          <div style={{display: 'flex'}}>
+            <Button
+              fluid
+              icon
+              labelPosition="left"
+              className="unsubscribe-btn"
+              onClick={() => unsubscribeList(selectedSubscribed)}
+              disabled={selectedSubscribed.length === 0}
+            >
+              <Icon name="minus" />
+              <Translate>Unsubscribe</Translate>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -125,11 +126,11 @@ export function MailingList({mailingLists}) {
       <div className="i-box" style={{marginTop: '15px'}}>
         <div className="i-box-header">
           <div className="i-box-title">
-            <Translate>Not Subscribed Lists</Translate>
+            <Translate>Available Lists</Translate>
           </div>
         </div>
         <div className="i-box-content">
-          <List divided size="big">
+          <List divided relaxed size="big">
             {notSubMailingLists.map(list => (
               <ListItem className="mailing" key={list.id}>
                 <ListContent>
@@ -142,25 +143,27 @@ export function MailingList({mailingLists}) {
                 </ListContent>
               </ListItem>
             ))}
-            <ListItem>
-              <Button
-                icon
-                labelPosition="left"
-                primary
-                className="subscribe-btn"
-                onClick={() => subscribeList(selectedNotSubscribed)}
-                disabled={selectedNotSubscribed.length === 0}
-              >
-                <Icon name="plus" />
-                <Translate>Subscribe</Translate>
-              </Button>
-            </ListItem>
           </List>
+          <div style={{display: 'flex'}}>
+            <Button
+              fluid
+              icon
+              labelPosition="left"
+              primary
+              className="unsubscribe-btn"
+              onClick={() => unsubscribeList(selectedSubscribed)}
+              disabled={selectedSubscribed.length === 0}
+            >
+              <Icon name="minus" />
+              <Translate>Subscribe</Translate>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 MailingList.propTypes = {
   mailingLists: PropTypes.shape({
     lists: PropTypes.arrayOf(
@@ -176,4 +179,51 @@ MailingList.propTypes = {
 window.setupMailingList = (elem, subMailingLists) => {
   subMailingLists = JSON.parse(subMailingLists);
   ReactDOM.render(<MailingList mailingLists={subMailingLists} />, elem);
+};
+
+const ErrorsModal = ({open, onClose, errors}) => {
+  return (
+    <Modal open={open} onClose={onClose} size="small">
+      <Modal.Header>
+        <Translate>Subscription/Unsubscription Errors</Translate>
+      </Modal.Header>
+      <Modal.Content>
+        <div>
+          <h4>
+            <Translate>Failed Actions:</Translate>
+          </h4>
+          {errors.length > 0 ? (
+            <ul>
+              {errors.map(error => (
+                <li key={error.list_id}>
+                  <Translate>List ID:</Translate> {error.list_id} -
+                  {error.message || <Translate>Unknown Error</Translate>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>
+              <Translate>No errors occurred.</Translate>
+            </p>
+          )}
+        </div>
+      </Modal.Content>
+      <Modal.Actions>
+        <Button onClick={onClose} primary>
+          <Translate>Close</Translate>
+        </Button>
+      </Modal.Actions>
+    </Modal>
+  );
+};
+
+ErrorsModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  errors: PropTypes.arrayOf(
+    PropTypes.shape({
+      list_id: PropTypes.number.isRequired,
+      message: PropTypes.string,
+    })
+  ).isRequired,
 };
