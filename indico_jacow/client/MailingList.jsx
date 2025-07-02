@@ -12,7 +12,7 @@ import mailingListUnsubscribeURL from 'indico-url:plugin_jacow.mailing_lists_uns
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
-import {Button, ListItem, Icon, ListContent, List, Checkbox, Modal} from 'semantic-ui-react';
+import {Button, ListItem, ListContent, List, Checkbox, Modal} from 'semantic-ui-react';
 
 import {Translate} from 'indico/react/i18n';
 import {indicoAxios} from 'indico/utils/axios';
@@ -20,33 +20,12 @@ import {indicoAxios} from 'indico/utils/axios';
 import './MailingList.module.scss';
 
 export function MailingList({mailingLists}) {
-  const [subMailingLists, setSubMailingLists] = useState(
-    mailingLists.lists.filter(list => list.subscribed)
-  );
-  const [notSubMailingLists, setNotSubMailingLists] = useState(
-    mailingLists.lists.filter(list => !list.subscribed)
-  );
-  const [selectedSubscribed, setSelectedSubscribed] = useState([]);
-  const [selectedNotSubscribed, setSelectedNotSubscribed] = useState([]);
+  const [lists, setLists] = useState(mailingLists.lists);
 
-  const subscribeList = async listsIds => {
+  const subscribeList = async listId => {
     try {
-      const response = await indicoAxios.post(mailingListSubscribeURL(), {lists_ids: listsIds});
-      const {results, errors} = response.data;
+      const response = await indicoAxios.post(mailingListSubscribeURL(), {list_id: listId});
       console.log(response.data);
-
-      const successfullySubscribed = results.map(result => result.list_id);
-
-      setNotSubMailingLists(prevLists =>
-        prevLists.filter(list => !successfullySubscribed.includes(list.id))
-      );
-      setSubMailingLists(prevLists =>
-        prevLists.concat(
-          mailingLists.lists.filter(list => successfullySubscribed.includes(list.id))
-        )
-      );
-
-      setSelectedNotSubscribed([]);
     } catch (e) {
       console.error(e);
     }
@@ -55,35 +34,30 @@ export function MailingList({mailingLists}) {
   const unsubscribeList = async listsIds => {
     try {
       const response = await indicoAxios.post(mailingListUnsubscribeURL(), {lists_ids: listsIds});
-      const {results, errors} = response.data;
-      console.log(response);
-      const successfullyUnsubscribed = results.map(result => result.list_id);
-
-      setSubMailingLists(prevLists =>
-        prevLists.filter(list => !successfullyUnsubscribed.includes(list.id))
-      );
-      setNotSubMailingLists(prevLists =>
-        prevLists.concat(
-          mailingLists.lists.filter(list => successfullyUnsubscribed.includes(list.id))
-        )
-      );
-
-      setSelectedSubscribed([]);
+      console.log(response.data);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleSelectSubscribed = (e, {value}) => {
-    setSelectedSubscribed(prev =>
-      prev.includes(value) ? prev.filter(id => id !== value) : [...prev, value]
-    );
-  };
-
-  const handleSelectNotSubscribed = (e, {value}) => {
-    setSelectedNotSubscribed(prev =>
-      prev.includes(value) ? prev.filter(id => id !== value) : [...prev, value]
-    );
+  const handleToggle = async (ev, {value}) => {
+    try {
+      setLists(prevLists =>
+        prevLists.map(list => {
+          if (list.id === value) {
+            if (!list.subscribed) {
+              subscribeList(value);
+            } else {
+              unsubscribeList(value);
+            }
+            return {...list, subscribed: !list.subscribed};
+          }
+          return list;
+        })
+      );
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -97,69 +71,19 @@ export function MailingList({mailingLists}) {
         </div>
         <div className="i-box-content">
           <List divided relaxed size="big">
-            {subMailingLists.map(list => (
+            {lists.map(list => (
               <ListItem className="mailing" key={list.id}>
                 <ListContent>
                   <Checkbox
                     label={list.name}
                     value={list.id}
-                    onChange={handleSelectSubscribed}
-                    checked={selectedSubscribed.includes(list.id)}
+                    onChange={handleToggle}
+                    checked={list.subscribed}
                   />
                 </ListContent>
               </ListItem>
             ))}
           </List>
-          <div style={{display: 'flex'}}>
-            <Button
-              fluid
-              icon
-              labelPosition="left"
-              onClick={() => unsubscribeList(selectedSubscribed)}
-              disabled={selectedSubscribed.length === 0}
-            >
-              <Icon name="minus" />
-              <Translate>Unsubscribe</Translate>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Not Subscribed Lists Section */}
-      <div className="i-box" style={{marginTop: '15px'}}>
-        <div className="i-box-header">
-          <div className="i-box-title">
-            <Translate>Available Lists</Translate>
-          </div>
-        </div>
-        <div className="i-box-content">
-          <List divided relaxed size="big">
-            {notSubMailingLists.map(list => (
-              <ListItem className="mailing" key={list.id}>
-                <ListContent>
-                  <Checkbox
-                    label={list.name}
-                    value={list.id}
-                    onChange={handleSelectNotSubscribed}
-                    checked={selectedNotSubscribed.includes(list.id)}
-                  />
-                </ListContent>
-              </ListItem>
-            ))}
-          </List>
-          <div style={{display: 'flex'}}>
-            <Button
-              fluid
-              icon
-              labelPosition="left"
-              primary
-              onClick={() => subscribeList(selectedNotSubscribed)}
-              disabled={selectedNotSubscribed.length === 0}
-            >
-              <Icon name="minus" />
-              <Translate>Subscribe</Translate>
-            </Button>
-          </div>
         </div>
       </div>
     </div>
