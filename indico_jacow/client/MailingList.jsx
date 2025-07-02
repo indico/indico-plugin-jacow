@@ -31,9 +31,9 @@ export function MailingList({mailingLists}) {
     }
   };
 
-  const unsubscribeList = async listsIds => {
+  const unsubscribeList = async listId => {
     try {
-      const response = await indicoAxios.post(mailingListUnsubscribeURL(), {lists_ids: listsIds});
+      const response = await indicoAxios.post(mailingListUnsubscribeURL(), {list_id: listId});
       console.log(response.data);
     } catch (e) {
       console.error(e);
@@ -75,6 +75,7 @@ export function MailingList({mailingLists}) {
               <ListItem className="mailing" key={list.id}>
                 <ListContent>
                   <Checkbox
+                    toggle
                     label={list.name}
                     value={list.id}
                     onChange={handleToggle}

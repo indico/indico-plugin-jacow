@@ -370,54 +370,46 @@ class RHMailingLists(RHUserBase, BrevoAPIMixin):
 
 class RHMailingListSubscribe(RHUserBase, BrevoAPIMixin):
     @use_kwargs({
-        'lists_ids': fields.List(fields.Int(), required=True)
+        'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, lists_ids):
+    def _process(self, list_id):
         email = self.user.email
 
         if (self.get_contact_info(email)):
-            results, errors = self.add_contact_to_lists(lists_ids, email)
-            return {'results': results, 'errors': errors}, 200 if not errors else 207
+            response = self.add_contact_to_lists(list_id, email)
+            return response, 200
         else:
             try:
                 response = self.create_contact(
                     email=email,
                     first_name=self.user.first_name,
                     last_name=self.user.last_name,
-                    list_ids=lists_ids)
+                    list_ids=list_id)
                 return response.to_dict(), 200
             except ApiException as e:
-                print(f"Couldn't create contact for {email} and add it to the list {lists_ids} due to {e}")
+                print(f"Couldn't create contact for {email} and add it to the list {list_id} due to {e}")
                 return {'error': 'Failed to create contact and subscribe to the list.'}, e.status
 
-    def add_contact_to_lists(self, lists_ids, contact_email):
+    def add_contact_to_lists(self, list_id, contact_email):
         contact_email = brevo_python.AddContactToList(emails=[contact_email])
-        results = []
-        errors = []
-        for list_id in lists_ids:
-            try:
-                response = self.api_instance.add_contact_to_list(list_id, contact_email)
-                results.append({'list_id': list_id, 'response': response.to_dict()})
-            except ApiException as e:
-                print(f'Could not add contact {contact_email} to list {list_id} due to {e}')
-                errors.append({'list_id': list_id, 'message': str(e)})
-        return results, errors
+        try:
+            response = self.api_instance.add_contact_to_list(list_id, contact_email)
+            return response.to_dict()
+        except ApiException as e:
+            print(f'Could not add contact {contact_email} to list {list_id} due to {e}')
+            return e.message, e.status
 
 
 class RHMailingListUnsubscribe(RHUserBase, BrevoAPIMixin):
     @use_kwargs({
-        'lists_ids': fields.List(fields.Int(), required=True)
+        'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, lists_ids):
+    def _process(self, list_id):
         contact_emails = brevo_python.RemoveContactFromList(emails=list(self.user.all_emails))
 
-        results = []
-        errors = []
-        for list_id in lists_ids:
-            try:
-                response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
-                results.append({'list_id': list_id, 'response': response.to_dict()})
-            except Exception as e:
-                print(f'Could not unsubscribe from list {list_id} due to {e}')
-                errors.append({'list_id': list_id, 'message': str(e)})
-        return {'results': results, 'errors': errors}, 200 if not errors else 207
+        try:
+            response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
+            return response.to_dict(), 200
+        except Exception as e:
+            print(f'Could not unsubscribe from list {list_id} due to {e}')
+            return e.message, e.status
