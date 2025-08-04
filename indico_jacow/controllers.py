@@ -355,10 +355,9 @@ class RHMailingLists(RHUserBase, BrevoAPIMixin):
         lists = self.get_all_lists()
 
         for email in emails:
-            if (contact_info := self.api_instance.get_contact_info(email)):
-                contact_data = contact_info.to_dict()
-                if 'list_ids' in contact_data:
-                    valid_contact_ids.update(contact_data['list_ids'])
+            if (contact_info := self.get_contact_info(email)):
+                if 'list_ids' in contact_info:
+                    valid_contact_ids.update(contact_info['list_ids'])
 
         for lst in lists.get('lists', []):
             lst['subscribed'] = lst['id'] in valid_contact_ids
