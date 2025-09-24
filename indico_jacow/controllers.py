@@ -387,8 +387,7 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
                     list_ids=list_id)
                 return response.to_dict(), 200
             except ApiException as e:
-                print(f"Couldn't create contact for {email} and add it to the list {list_id} due to {e}")
-                return {'error': 'Failed to create contact and subscribe to the list.'}, e.status
+                raise IndicoError(f'Failed to create contact and subscribe to the list: {e.reason}')
 
     def add_contact_to_lists(self, list_id, contact_email):
         contact_email = brevo_python.AddContactToList(emails=[contact_email])
@@ -396,8 +395,7 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
             response = self.api_instance.add_contact_to_list(list_id, contact_email)
             return response.to_dict()
         except ApiException as e:
-            print(f'Could not add contact {contact_email} to list {list_id} due to {e}')
-            return e.message, e.status
+            raise IndicoError(f'Could not add contact to the list: {e.reason}')
 
 
 class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
@@ -411,5 +409,4 @@ class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
             response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
             return response.to_dict(), 200
         except Exception as e:
-            print(f'Could not unsubscribe from list {list_id} due to {e}')
-            return e.message, e.status
+            raise IndicoError(f'Could not unsubscribe from the list: {e.reason}')
