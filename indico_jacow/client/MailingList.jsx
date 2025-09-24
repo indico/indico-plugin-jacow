@@ -40,24 +40,20 @@ export function MailingList({mailingLists}) {
     }
   };
 
-  const handleToggle = async (ev, {value}) => {
-    try {
-      setLists(prevLists =>
-        prevLists.map(list => {
-          if (list.id === value) {
-            if (!list.subscribed) {
-              subscribeList(value);
-            } else {
-              unsubscribeList(value);
-            }
-            return {...list, subscribed: !list.subscribed};
+  const handleToggle = (ev, {value}) => {
+    setLists(prevLists =>
+      prevLists.map(list => {
+        if (list.id === value) {
+          if (!list.subscribed) {
+            subscribeList(value);
+          } else {
+            unsubscribeList(value);
           }
-          return list;
-        })
-      );
-    } catch (e) {
-      console.error(e);
-    }
+          return {...list, subscribed: !list.subscribed};
+        }
+        return list;
+      })
+    );
   };
 
   return (
