@@ -18,6 +18,7 @@ from flask_pluginengine import current_plugin
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
+from werkzeug.utils import cached_property
 
 from indico.core.db import db
 from indico.core.errors import IndicoError, UserValueError
@@ -316,7 +317,7 @@ class RHCreateAffiliation(RHProtected):
 
 
 class BrevoAPIMixin:
-    @property
+    @cached_property
     def api_instance(self):
         if not hasattr(self, '_api_instance'):
             from indico_jacow.plugin import JACOWPlugin
@@ -348,7 +349,7 @@ class BrevoAPIMixin:
         return self.api_instance.create_contact(contact).to_dict()
 
 
-class RHMailingLists(RHUserBase, BrevoAPIMixin):
+class RHMailingLists(BrevoAPIMixin, RHUserBase):
     def _process(self):
         valid_contact_ids = set()
         emails = self.user.all_emails
@@ -367,7 +368,7 @@ class RHMailingLists(RHUserBase, BrevoAPIMixin):
                                                   mailing_lists=mailing_lists)
 
 
-class RHMailingListSubscribe(RHUserBase, BrevoAPIMixin):
+class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
         'list_id': fields.Int(required=True, validate=not_empty),
     })
@@ -399,7 +400,7 @@ class RHMailingListSubscribe(RHUserBase, BrevoAPIMixin):
             return e.message, e.status
 
 
-class RHMailingListUnsubscribe(RHUserBase, BrevoAPIMixin):
+class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
         'list_id': fields.Int(required=True, validate=not_empty),
     })

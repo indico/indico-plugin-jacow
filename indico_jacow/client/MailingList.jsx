@@ -24,19 +24,19 @@ export function MailingList({mailingLists}) {
 
   const subscribeList = async listId => {
     try {
-      const response = await indicoAxios.post(mailingListSubscribeURL(), {list_id: listId});
-      console.log(response.data);
+      await indicoAxios.post(mailingListSubscribeURL(), {list_id: listId});
     } catch (e) {
-      console.error(e);
+      handleAxiosError(e);
+      return;
     }
   };
 
   const unsubscribeList = async listId => {
     try {
-      const response = await indicoAxios.post(mailingListUnsubscribeURL(), {list_id: listId});
-      console.log(response.data);
+      await indicoAxios.post(mailingListUnsubscribeURL(), {list_id: listId});
     } catch (e) {
-      console.error(e);
+      handleAxiosError(e);
+      return;
     }
   };
 
