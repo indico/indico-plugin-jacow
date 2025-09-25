@@ -228,7 +228,7 @@ class JACOWPlugin(IndicoPlugin):
 
     def _extend_user_profile_menu(self, sender, user, **kwargs):
         return SideMenuItem('mailing_lists', _('Mailing Lists'),
-                           url_for_plugin('jacow.mailing_lists', user), 65, disabled=user.is_system)
+                            url_for_plugin('jacow.mailing_lists', user), 65, disabled=user.is_system)
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         jacow_affiliations_ids = g.setdefault('jacow_affiliations_ids', {})

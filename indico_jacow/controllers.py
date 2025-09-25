@@ -377,7 +377,7 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
     def _process(self, list_name, list_id):
         email = self.user.email
         try:
-            if (self.get_contact_info(email)):
+            if self.get_contact_info(email):
                 response = self.add_contact_to_lists(list_id, email)
             else:
                 response = self.create_contact(

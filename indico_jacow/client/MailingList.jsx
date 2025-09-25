@@ -27,7 +27,6 @@ export function MailingList({mailingLists}) {
       await indicoAxios.post(mailingListSubscribeURL(), list);
     } catch (e) {
       handleAxiosError(e);
-      return;
     }
   };
 
@@ -36,7 +35,6 @@ export function MailingList({mailingLists}) {
       await indicoAxios.post(mailingListUnsubscribeURL(), list);
     } catch (e) {
       handleAxiosError(e);
-      return;
     }
   };
 
