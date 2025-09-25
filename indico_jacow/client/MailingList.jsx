@@ -22,18 +22,18 @@ import './MailingList.module.scss';
 export function MailingList({mailingLists}) {
   const [lists, setLists] = useState(mailingLists.lists);
 
-  const subscribeList = async listId => {
+  const subscribeList = async list => {
     try {
-      await indicoAxios.post(mailingListSubscribeURL(), {list_id: listId});
+      await indicoAxios.post(mailingListSubscribeURL(), list);
     } catch (e) {
       handleAxiosError(e);
       return;
     }
   };
 
-  const unsubscribeList = async listId => {
+  const unsubscribeList = async list => {
     try {
-      await indicoAxios.post(mailingListUnsubscribeURL(), {list_id: listId});
+      await indicoAxios.post(mailingListUnsubscribeURL(), list);
     } catch (e) {
       handleAxiosError(e);
       return;
@@ -45,9 +45,9 @@ export function MailingList({mailingLists}) {
       prevLists.map(list => {
         if (list.id === value) {
           if (!list.subscribed) {
-            subscribeList(value);
+            subscribeList({list_id: value, list_name: list.name});
           } else {
-            unsubscribeList(value);
+            unsubscribeList({list_id: value, list_name: list.name});
           }
           return {...list, subscribed: !list.subscribed};
         }

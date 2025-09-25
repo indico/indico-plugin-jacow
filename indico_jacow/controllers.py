@@ -13,7 +13,7 @@ from statistics import mean, pstdev
 
 import brevo_python
 from brevo_python.rest import ApiException
-from flask import jsonify, session
+from flask import jsonify, session, request
 from flask_pluginengine import current_plugin
 from marshmallow import fields
 from sqlalchemy.orm import load_only
@@ -32,6 +32,7 @@ from indico.modules.events.contributions.util import generate_spreadsheet_from_c
 from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
+from indico.modules.logs.models.entries import LogKind, UserLogRealm
 from indico.modules.users import User
 from indico.modules.users.controllers import RHUserBase
 from indico.modules.users.models.affiliations import Affiliation
@@ -370,43 +371,46 @@ class RHMailingLists(BrevoAPIMixin, RHUserBase):
 
 class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
+        'list_name': fields.String(required=True, validate=not_empty),
         'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, list_id):
+    def _process(self, list_name, list_id):
         email = self.user.email
-
-        if (self.get_contact_info(email)):
-            response = self.add_contact_to_lists(list_id, email)
-            return response, 200
-        else:
-            try:
+        try:
+            if (self.get_contact_info(email)):
+                response = self.add_contact_to_lists(list_id, email)
+            else:
                 response = self.create_contact(
                     email=email,
                     first_name=self.user.first_name,
                     last_name=self.user.last_name,
-                    list_ids=list_id)
-                return response.to_dict(), 200
-            except ApiException as e:
-                raise IndicoError(f'Failed to create contact and subscribe to the list: {e.reason}')
+                    list_ids=[list_id])
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists', f'Subscribed to list: {list_name}',
+                            session.user, data={'IP': request.remote_addr},
+                            meta={'list_id': list_id})
+            return response
+        except ApiException as e:
+            raise IndicoError(f'Failed to subscribe to the list and/or create contact: {e.reason}')
 
     def add_contact_to_lists(self, list_id, contact_email):
         contact_email = brevo_python.AddContactToList(emails=[contact_email])
-        try:
-            response = self.api_instance.add_contact_to_list(list_id, contact_email)
-            return response.to_dict()
-        except ApiException as e:
-            raise IndicoError(f'Could not add contact to the list: {e.reason}')
+        response = self.api_instance.add_contact_to_list(list_id, contact_email)
+        return response.to_dict()
 
 
 class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
+        'list_name': fields.String(required=True, validate=not_empty),
         'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, list_id):
+    def _process(self, list_name, list_id):
         contact_emails = brevo_python.RemoveContactFromList(emails=list(self.user.all_emails))
 
         try:
             response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
-            return response.to_dict(), 200
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists', f'Unsubscribed from list: {list_name}',
+                            session.user, data={'IP': request.remote_addr},
+                            meta={'list_id': list_id})
+            return response.to_dict()
         except Exception as e:
             raise IndicoError(f'Could not unsubscribe from the list: {e.reason}')
