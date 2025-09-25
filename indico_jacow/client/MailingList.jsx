@@ -68,7 +68,7 @@ export function MailingList({mailingLists}) {
         <div className="i-box-content">
           <List divided relaxed size="big">
             {lists.map(list => (
-              <ListItem className="mailing" key={list.id}>
+              <ListItem styleName="mailing" key={list.id}>
                 <ListContent>{list.name}</ListContent>
                 <ListContent>
                   <Checkbox
