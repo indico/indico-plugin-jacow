@@ -13,7 +13,7 @@ from statistics import mean, pstdev
 
 import brevo_python
 from brevo_python.rest import ApiException
-from flask import jsonify, session, request
+from flask import jsonify, request, session
 from flask_pluginengine import current_plugin
 from marshmallow import fields
 from sqlalchemy.orm import load_only
