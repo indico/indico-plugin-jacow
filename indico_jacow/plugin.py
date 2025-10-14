@@ -25,6 +25,7 @@ from indico.modules.events.models.persons import EventPerson
 from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
+from indico.modules.events.registration.schemas import CheckinRegistrationSchema
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.widgets import SwitchWidget
@@ -72,6 +73,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
+        self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump, sender=CheckinRegistrationSchema)
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
                WPMyContributions, WPManagePapers)
         self.inject_bundle('main.js', wps)
@@ -228,6 +230,13 @@ class JACOWPlugin(IndicoPlugin):
         for person, person_link in zip(data, orig, strict=True):
             person['jacow_affiliations_ids'] = [ja.affiliation.id for ja in person_link.jacow_affiliations]
             person['jacow_affiliations_meta'] = [ja.details for ja in person_link.jacow_affiliations]
+
+    def _checkin_registration_schema_post_dump(self, sender, data, orig, **kwargs):
+        for reg, registration in zip(data, orig, strict=True):
+            if not registration.transaction:
+                continue
+            reg['transaction_amount'] = registration.transaction.amount
+            reg['transaction_currency'] = registration.transaction.currency
 
     def get_blueprints(self):
         return blueprint
