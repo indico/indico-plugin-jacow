@@ -25,8 +25,8 @@ from indico.modules.events.models.persons import EventPerson
 from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
-from indico.modules.users.views import WPUser
 from indico.modules.events.registration.schemas import CheckinRegistrationSchema
+from indico.modules.users.views import WPUser
 from indico.util.i18n import _
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.fields import IndicoPasswordField
