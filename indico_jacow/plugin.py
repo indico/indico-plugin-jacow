@@ -73,7 +73,8 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
-        self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump, sender=CheckinRegistrationSchema)
+        self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump,
+                     sender=CheckinRegistrationSchema)
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
                WPMyContributions, WPManagePapers)
         self.inject_bundle('main.js', wps)
@@ -237,6 +238,7 @@ class JACOWPlugin(IndicoPlugin):
                 continue
             reg['transaction_amount'] = registration.transaction.amount
             reg['transaction_currency'] = registration.transaction.currency
+            reg['transaction_status'] = registration.transaction.status.name
 
     def get_blueprints(self):
         return blueprint
