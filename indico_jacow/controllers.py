@@ -7,17 +7,21 @@
 
 import csv
 import io
+import json
 from collections import defaultdict
 from statistics import mean, pstdev
 
-from flask import jsonify, session
+import brevo_python
+from brevo_python.rest import ApiException
+from flask import jsonify, request, session
 from flask_pluginengine import current_plugin
 from marshmallow import fields
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Forbidden
+from werkzeug.utils import cached_property
 
 from indico.core.db import db
-from indico.core.errors import UserValueError
+from indico.core.errors import IndicoError, UserValueError
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.controllers.base import RHAbstractsBase
 from indico.modules.events.abstracts.models.review_ratings import AbstractReviewRating
@@ -28,7 +32,9 @@ from indico.modules.events.contributions.util import generate_spreadsheet_from_c
 from indico.modules.events.management.controllers import RHManageEventBase
 from indico.modules.events.papers.controllers.base import RHManagePapersBase
 from indico.modules.events.tracks.models.tracks import Track
+from indico.modules.logs.models.entries import LogKind, UserLogRealm
 from indico.modules.users import User
+from indico.modules.users.controllers import RHUserBase
 from indico.modules.users.models.affiliations import Affiliation
 from indico.modules.users.schemas import AffiliationSchema
 from indico.modules.users.util import search_affiliations
@@ -42,7 +48,7 @@ from indico.web.args import use_args, use_kwargs
 from indico.web.flask.util import url_for
 from indico.web.rh import RH, RHProtected
 
-from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics
+from indico_jacow.views import WPAbstractsStats, WPDisplayAbstractsStatistics, WPUserMailingLists
 
 
 def _get_boolean_questions(event):
@@ -309,3 +315,109 @@ class RHCreateAffiliation(RHProtected):
         current_plugin.logger.info('Affiliation %r created by %r', aff, session.user)
         search_affiliations.bump_version()
         return AffiliationSchema().jsonify(aff)
+
+
+class BrevoAPIMixin:
+    @cached_property
+    def api_instance(self):
+        if not hasattr(self, '_api_instance'):
+            from indico_jacow.plugin import JACOWPlugin
+            configuration_brevo = brevo_python.Configuration()
+            configuration_brevo.api_key['api-key'] = JACOWPlugin.settings.get('brevo_api_key')
+            self._api_instance = brevo_python.ContactsApi(brevo_python.ApiClient(configuration_brevo))
+        return self._api_instance
+
+    def get_contact_info(self, email):
+        try:
+            return self.api_instance.get_contact_info(email).to_dict()
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+
+    def create_contact(self, email, first_name, last_name, list_ids):
+        contact = brevo_python.CreateContact(
+            email=email,
+            attributes={'FIRSTNAME': first_name, 'LASTNAME': last_name},
+            list_ids=list_ids
+        )
+        return self.api_instance.create_contact(contact).to_dict()
+
+    def get_list(self, list_id):
+        try:
+            return self.api_instance.get_list(list_id).to_dict()
+        except ApiException as e:
+            raise IndicoError(f'Exception when retrieving Mailing List from Brevo: {e.reason}')
+
+
+class RHMailingLists(BrevoAPIMixin, RHUserBase):
+    def _process(self):
+        valid_contact_ids = set()
+        emails = self.user.all_emails
+        lists = self.get_all_lists()
+
+        for email in emails:
+            if (contact_info := self.get_contact_info(email)):
+                if 'list_ids' in contact_info:
+                    valid_contact_ids.update(contact_info['list_ids'])
+
+        for lst in lists.get('lists', []):
+            lst['subscribed'] = lst['id'] in valid_contact_ids
+
+        mailing_lists = json.dumps(lists)
+        return WPUserMailingLists.render_template('mailing_lists.html', 'mailing_lists', user=self.user,
+                                                  mailing_lists=mailing_lists)
+
+    def get_all_lists(self):
+        try:
+            return self.api_instance.get_lists().to_dict()
+        except ApiException as e:
+            raise IndicoError(f'Exception when retrieving Mailing Lists from Brevo: {e.reason}')
+
+
+class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
+    @use_kwargs({
+        'list_id': fields.Int(required=True, validate=not_empty),
+    })
+    def _process(self, list_id):
+        email = self.user.email
+        try:
+            if self.get_contact_info(email):
+                response = self.add_contact_to_lists(list_id, email)
+            else:
+                response = self.create_contact(
+                    email=email,
+                    first_name=self.user.first_name,
+                    last_name=self.user.last_name,
+                    list_ids=[list_id],
+                    )
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists',
+                            f'Subscribed to list: {self.get_list(list_id)['name']}',
+                            session.user, data={'IP': request.remote_addr},
+                            meta={'list_id': list_id})
+            return response
+        except ApiException as e:
+            raise IndicoError(f'Failed to subscribe to the list and/or create contact: {e.reason}')
+
+    def add_contact_to_lists(self, list_id, contact_email):
+        contact_email = brevo_python.AddContactToList(emails=[contact_email])
+        response = self.api_instance.add_contact_to_list(list_id, contact_email)
+        return response.to_dict()
+
+
+class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
+    @use_kwargs({
+        'list_id': fields.Int(required=True, validate=not_empty),
+    })
+    def _process(self, list_id):
+        contact_emails = brevo_python.RemoveContactFromList(emails=list(self.user.all_emails))
+
+        try:
+            response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists',
+                            f'Unsubscribed from list: {self.get_list(list_id)['name']}',
+                            session.user, data={'IP': request.remote_addr},
+                            meta={'list_id': list_id})
+            return response.to_dict()
+        except Exception as e:
+            raise IndicoError(f'Could not unsubscribe from the list: {e.reason}')

@@ -8,6 +8,7 @@
 from indico.core.plugins import WPJinjaMixinPlugin
 from indico.modules.events.abstracts.views import WPDisplayAbstracts
 from indico.modules.events.management.views import WPEventManagement
+from indico.modules.users.views import WPUser
 
 
 class WPDisplayAbstractsStatistics(WPJinjaMixinPlugin, WPDisplayAbstracts):
@@ -17,3 +18,7 @@ class WPDisplayAbstractsStatistics(WPJinjaMixinPlugin, WPDisplayAbstracts):
 
 class WPAbstractsStats(WPJinjaMixinPlugin, WPEventManagement):
     sidemenu_option = 'abstracts_stats'
+
+
+class WPUserMailingLists(WPJinjaMixinPlugin, WPUser):
+    sidemenu_option = 'mailing_lists'
