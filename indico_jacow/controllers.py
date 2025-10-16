@@ -335,12 +335,6 @@ class BrevoAPIMixin:
                 return None
             raise
 
-    def get_all_lists(self):
-        try:
-            return self.api_instance.get_lists().to_dict()
-        except ApiException as e:
-            raise IndicoError(f'Exception when retrieving Mailing Lists from Brevo: {e.reason}')
-
     def create_contact(self, email, first_name, last_name, list_ids):
         contact = brevo_python.CreateContact(
             email=email,
@@ -367,6 +361,12 @@ class RHMailingLists(BrevoAPIMixin, RHUserBase):
         mailing_lists = json.dumps(lists)
         return WPUserMailingLists.render_template('mailing_lists.html', 'mailing_lists', user=self.user,
                                                   mailing_lists=mailing_lists)
+
+    def get_all_lists(self):
+        try:
+            return self.api_instance.get_lists().to_dict()
+        except ApiException as e:
+            raise IndicoError(f'Exception when retrieving Mailing Lists from Brevo: {e.reason}')
 
 
 class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
