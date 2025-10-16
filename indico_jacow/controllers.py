@@ -343,6 +343,12 @@ class BrevoAPIMixin:
         )
         return self.api_instance.create_contact(contact).to_dict()
 
+    def get_list(self, list_id):
+        try:
+            return self.api_instance.get_list(list_id).to_dict()
+        except ApiException as e:
+            raise IndicoError(f'Exception when retrieving Mailing List from Brevo: {e.reason}')
+
 
 class RHMailingLists(BrevoAPIMixin, RHUserBase):
     def _process(self):
@@ -386,7 +392,8 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
                     last_name=self.user.last_name,
                     list_ids=[list_id],
                     )
-            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists', f'Subscribed to list: {list_name}',
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists',
+                            f'Subscribed to list: {self.get_list(list_id)['name']}',
                             session.user, data={'IP': request.remote_addr},
                             meta={'list_id': list_id})
             return response
@@ -409,7 +416,8 @@ class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
 
         try:
             response = self.api_instance.remove_contact_from_list(list_id, contact_emails)
-            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists', f'Unsubscribed from list: {list_name}',
+            self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists',
+                            f'Unsubscribed from list: {self.get_list(list_id)['name']}',
                             session.user, data={'IP': request.remote_addr},
                             meta={'list_id': list_id})
             return response.to_dict()
