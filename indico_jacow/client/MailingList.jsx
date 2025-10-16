@@ -60,7 +60,7 @@ export function MailingList({mailingLists}) {
       <div className="i-box">
         <div className="i-box-header">
           <div className="i-box-title">
-            <Translate>My Lists</Translate>
+            <Translate>Mailing Lists</Translate>
           </div>
         </div>
         <div className="i-box-content">
