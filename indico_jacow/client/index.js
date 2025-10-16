@@ -24,6 +24,5 @@ registerPluginComponent(
   'principal-list-field-add-buttons',
   PeerReviewManagersFileButton
 );
-registerPluginComponent(PLUGIN_NAME, 'mailing-lists', MailingList);
 registerPluginObject(PLUGIN_NAME, 'personLinkCustomFields', customFields);
 registerPluginObject(PLUGIN_NAME, 'onAddPersonLink', onAddPersonLink);
