@@ -384,7 +384,8 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
                     email=email,
                     first_name=self.user.first_name,
                     last_name=self.user.last_name,
-                    list_ids=[list_id])
+                    list_ids=[list_id],
+                    )
             self.user.log(UserLogRealm.user, LogKind.positive, 'Mailing Lists', f'Subscribed to list: {list_name}',
                             session.user, data={'IP': request.remote_addr},
                             meta={'list_id': list_id})
