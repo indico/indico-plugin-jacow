@@ -377,10 +377,9 @@ class RHMailingLists(BrevoAPIMixin, RHUserBase):
 
 class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
-        'list_name': fields.String(required=True, validate=not_empty),
         'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, list_name, list_id):
+    def _process(self, list_id):
         email = self.user.email
         try:
             if self.get_contact_info(email):
@@ -408,10 +407,9 @@ class RHMailingListSubscribe(BrevoAPIMixin, RHUserBase):
 
 class RHMailingListUnsubscribe(BrevoAPIMixin, RHUserBase):
     @use_kwargs({
-        'list_name': fields.String(required=True, validate=not_empty),
         'list_id': fields.Int(required=True, validate=not_empty),
     })
-    def _process(self, list_name, list_id):
+    def _process(self, list_id):
         contact_emails = brevo_python.RemoveContactFromList(emails=list(self.user.all_emails))
 
         try:
