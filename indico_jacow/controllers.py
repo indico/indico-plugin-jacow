@@ -243,7 +243,7 @@ class RHContributionsExportExcel(RHContributionsExportBase):
 
 
 class RHPeerReviewCSVImport(RHManagePapersBase):
-    @use_kwargs({'file': fields.Field(required=True)}, location='files')
+    @use_kwargs({'file': fields.Raw(required=True)}, location='files')
     def _process(self, file):
         file_content = file.read().decode('utf-8')
         csv_file = io.StringIO(file_content)
