@@ -1,0 +1,12 @@
+{% extends '~users/users_merge.html' %}
+{% from 'message_box.html' import message_box %}
+
+{%- block content %}
+    {% if not session.user.is_admin %}
+        {% call message_box('warning') %}
+            Please be <strong>extremely careful</strong> when merging users. <strong>It cannot be undone.</strong>
+            If you accidentally merge two users who are actually different people, it will be a huge mess.
+        {% endcall %}
+    {% endif %}
+    {{ super() }}
+{% endblock %}

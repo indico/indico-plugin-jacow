@@ -1,0 +1,7 @@
+{% extends '~users/users_admin.html' %}
+
+{% block title_actions %}
+    {% if session.user.is_admin %}
+        {{ super() }}
+    {% endif %}
+{% endblock %}
