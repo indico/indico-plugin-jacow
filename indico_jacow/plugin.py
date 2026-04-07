@@ -5,6 +5,8 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
+import os
+
 from flask import g, session
 from flask_pluginengine import render_plugin_template
 from wtforms.fields import BooleanField
@@ -26,18 +28,40 @@ from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
 from indico.modules.events.registration.schemas import CheckinRegistrationSchema
+from indico.modules.logs.controllers import RHUserLogs, RHUserLogsJSON
+from indico.modules.users import controllers as users_controllers
 from indico.util.i18n import _
+from indico.web.flask.util import url_for
 from indico.web.forms.base import IndicoForm
+from indico.web.forms.fields import PrincipalListField
 from indico.web.forms.widgets import SwitchWidget
-from indico.web.menu import SideMenuItem
+from indico.web.menu import SideMenuItem, TopMenuItem
 
 from indico_jacow.blueprint import blueprint
 from indico_jacow.models.affiliations import AbstractAffiliation, ContributionAffiliation
 
 
+REPO_MANAGER_RHS = (
+    users_controllers.RHUsersAdmin,
+    users_controllers.RHUsersAdminCreate,
+    users_controllers.RHUsersAdminMerge,
+    users_controllers.RHUsersAdminMergeCheck,
+    users_controllers.RHAffiliationsDashboard,
+    users_controllers.RHAffiliationsAPI,
+    users_controllers.RHAffiliationAPI,
+    users_controllers.RHPersonalData,
+    users_controllers.RHPersonalDataUpdate,
+    RHUserLogs,
+    RHUserLogsJSON,
+)
+
+
 class SettingsForm(IndicoForm):
     sync_enabled = BooleanField(_('Sync profiles'), widget=SwitchWidget(),
                                 description=_('Periodically sync user details with the central database'))
+    repo_managers = PrincipalListField(_('Central Repo Managers'), allow_groups=True,
+                                       description=_('List of users who can manage Indico user profiles without being '
+                                                     'full Indico admins'))
 
 
 class JACOWPlugin(IndicoPlugin):
@@ -51,6 +75,9 @@ class JACOWPlugin(IndicoPlugin):
     default_settings = {
         'sync_enabled': False,
     }
+    acl_settings = {
+        'repo_managers',
+    }
     default_event_settings = {
         'multiple_affiliations': False,
     }
@@ -60,6 +87,7 @@ class JACOWPlugin(IndicoPlugin):
         self.template_hook('abstract-list-options', self._inject_abstract_export_button)
         self.template_hook('contribution-list-options', self._inject_contribution_export_button)
         self.template_hook('custom-affiliation', self._inject_custom_affiliation)
+        self.connect(signals.plugin.get_template_customization_paths, self._override_templates)
         self.connect(signals.core.add_form_fields, self._add_person_lists_settings, sender=ManagePersonListsForm)
         self.connect(signals.core.form_validated, self._person_lists_form_validated)
         self.connect(signals.core.form_validated, self._submission_form_validated)
@@ -71,6 +99,11 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.event.cloned, self._event_cloned)
         self.connect(signals.event.imported, self._event_imported)
         self.connect(signals.menu.items, self._add_sidemenu_item, sender='event-management-sidemenu')
+        self.connect(signals.menu.items, self._add_admin_sidemenu_repo_mgr, sender='admin-sidemenu')
+        self.connect(signals.menu.items, self._add_user_sidemenu_repo_mgr, sender='user-profile-sidemenu')
+        self.connect(signals.menu.items, self._add_top_menu_repo_mgr, sender='top-menu')
+        for rh_cls in REPO_MANAGER_RHS:
+            self.connect(signals.rh.before_check_access, self._before_check_access_repo_mgr, sender=rh_cls)
         self.connect(signals.plugin.schema_pre_load, self._person_link_schema_pre_load, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._person_link_schema_post_dump, sender=PersonLinkSchema)
         self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump,
@@ -79,6 +112,9 @@ class JACOWPlugin(IndicoPlugin):
                WPMyContributions, WPManagePapers)
         self.inject_bundle('main.js', wps)
         self.inject_bundle('main.css', wps)
+
+    def _override_templates(self, sender, **kwargs):
+        return os.path.join(self.root_path, 'template_overrides')
 
     def _inject_abstract_export_button(self, event=None):
         return render_plugin_template('export_button.html',
@@ -220,6 +256,33 @@ class JACOWPlugin(IndicoPlugin):
             return
         return SideMenuItem('abstracts_stats', _('CfA Statistics'),
                             url_for_plugin('jacow.abstracts_stats', event), section='reports')
+
+    def _is_non_admin_repo_mgr(self):
+        return (
+            session.user
+            and not session.user.is_admin
+            and self.settings.acls.contains_user('repo_managers', session.user)
+        )
+
+    def _add_admin_sidemenu_repo_mgr(self, sender, **kwargs):
+        if self._is_non_admin_repo_mgr():
+            yield SideMenuItem('users', _('Users'), url_for('users.users_admin'))
+            yield SideMenuItem('affiliations', _('Affiliations'), url_for('users.affiliations_dashboard'))
+
+    def _add_user_sidemenu_repo_mgr(self, sender, user, **kwargs):
+        if not self._is_non_admin_repo_mgr():
+            return
+        if not user.can_be_modified(session.user):
+            yield SideMenuItem('personal_data', _('Personal data'), url_for('users.user_profile'), 90)
+        yield SideMenuItem('logs', _('Logs'), url_for('logs.user'), -100)
+
+    def _add_top_menu_repo_mgr(self, sender, **kwargs):
+        if self._is_non_admin_repo_mgr():
+            yield TopMenuItem('admin-jacow-repo', _('JACoW admin'), url_for('users.users_admin'), 65)
+
+    def _before_check_access_repo_mgr(self, sender, rh, **kwargs):
+        if session.user and self.settings.acls.contains_user('repo_managers', session.user):
+            return True
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         jacow_affiliations_ids = g.setdefault('jacow_affiliations_ids', {})
