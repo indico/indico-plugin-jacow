@@ -28,6 +28,7 @@ from indico.modules.events.papers.views import WPManagePapers
 from indico.modules.events.persons.forms import ManagePersonListsForm
 from indico.modules.events.persons.schemas import PersonLinkSchema
 from indico.modules.events.registration.schemas import CheckinRegistrationSchema
+from indico.modules.events.timetable.views import WPManageTimetable
 from indico.modules.logs.controllers import RHUserLogs, RHUserLogsJSON
 from indico.modules.users import controllers as users_controllers
 from indico.util.i18n import _
@@ -109,7 +110,7 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump,
                      sender=CheckinRegistrationSchema)
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
-               WPMyContributions, WPManagePapers)
+               WPMyContributions, WPManagePapers, WPManageTimetable)
         self.inject_bundle('main.js', wps)
         self.inject_bundle('main.css', wps)
 
