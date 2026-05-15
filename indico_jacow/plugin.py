@@ -286,6 +286,10 @@ class JACOWPlugin(IndicoPlugin):
             return True
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
+        if 'jacow_affiliations_ids' not in data:
+            return
+        data.pop('affiliation_id', None)
+        data.pop('affiliation_link', None)
         jacow_affiliations_ids = g.setdefault('jacow_affiliations_ids', {})
         jacow_affiliations_ids[data['email'].lower()] = data.get('jacow_affiliations_ids', [])
 
@@ -293,6 +297,9 @@ class JACOWPlugin(IndicoPlugin):
         if not all(isinstance(p, (AbstractPersonLink, ContributionPersonLink)) for p in orig):
             return
         for person, person_link in zip(data, orig, strict=True):
+            if person_link.jacow_affiliations:
+                person.pop('affiliation_id', None)
+                person.pop('affiliation_meta', None)
             person['jacow_affiliations_ids'] = [ja.affiliation.id for ja in person_link.jacow_affiliations]
             person['jacow_affiliations_meta'] = [ja.details for ja in person_link.jacow_affiliations]
 
