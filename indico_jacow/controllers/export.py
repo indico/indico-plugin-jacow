@@ -8,7 +8,6 @@
 from collections import defaultdict
 from statistics import mean, pstdev
 
-
 from indico.modules.events.abstracts.controllers.abstract_list import RHManageAbstractsExportActionsBase
 from indico.modules.events.abstracts.util import generate_spreadsheet_from_abstracts
 from indico.modules.events.contributions.controllers.management import RHManageContributionsExportActionsBase
