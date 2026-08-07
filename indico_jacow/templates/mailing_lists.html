@@ -1,0 +1,20 @@
+{% extends 'users/base.html' %}
+
+{% block banner_title %}
+    {{ super() }} - {% trans %}Mailing Lists{% endtrans %}
+{% endblock %}
+
+{% block user_content %}
+    {% if session.user.is_admin and user != session.user %}
+        {% call message_box('warning') %}
+            {% trans %}
+                You are editing another user as an admin. Changes to mailing list subscriptions will be applied to this
+                user's email addresses. Make sure any changes are intentional and appropriate for the user.
+            {% endtrans %}
+        {% endcall %}
+    {% endif %}
+    <ind-jacow-mailing-lists
+        user-id="{{ user_id | tojson | forceescape }}"
+        lists="{{ mailing_lists | tojson | forceescape }}">
+    </ind-jacow-mailing-lists>
+{% endblock %}

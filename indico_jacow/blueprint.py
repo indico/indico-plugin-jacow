@@ -5,11 +5,14 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
+from flask import has_request_context, request
+
 from indico.core.plugins import IndicoPluginBlueprint
 
 from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
                                       RHContributionsExportCSV, RHContributionsExportExcel, RHCountries,
-                                      RHCreateAffiliation, RHDisplayAbstractsStatistics, RHPeerReviewCSVImport)
+                                      RHCreateAffiliation, RHDisplayAbstractsStatistics, RHMailingLists,
+                                      RHMailingListSubscription, RHPeerReviewCSVImport)
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
@@ -35,3 +38,16 @@ blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_i
 
 blueprint.add_url_rule('!/api/jacow/countries', 'countries', RHCountries)
 blueprint.add_url_rule('!/api/jacow/affiliation', 'create_affiliation', RHCreateAffiliation, methods=('POST',))
+
+
+# Mailing lists
+with blueprint.add_prefixed_rules('!/user/<int:user_id>', '!/user'):
+    blueprint.add_url_rule('/mailing-lists/', 'user_mailing_lists', RHMailingLists)
+    blueprint.add_url_rule('/mailing-lists/subscriptions/<int:list_id>', 'user_mailing_lists_subscription',
+                           RHMailingListSubscription, methods=('PUT', 'DELETE'))
+
+
+@blueprint.url_defaults
+def _add_user_id(endpoint, values):
+    if endpoint.startswith('plugin_jacow.user_mailing_lists') and 'user_id' not in values and has_request_context():
+        values['user_id'] = request.view_args.get('user_id')

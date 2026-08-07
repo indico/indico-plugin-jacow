@@ -13,6 +13,7 @@ import MultipleAffiliationsSelector, {
   onAddPersonLink,
 } from './MultipleAffiliationsSelector';
 import {PeerReviewManagersFileButton} from './PeerReviewManagersFileInput';
+import './mailing_lists';
 
 const PLUGIN_NAME = 'jacow';
 

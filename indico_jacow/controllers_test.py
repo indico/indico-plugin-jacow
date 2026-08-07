@@ -6,8 +6,10 @@
 # the LICENSE file for more details.
 
 import pytest
-from flask import g
+from brevo import GetFolder, GetListsResponseListsItem
+from flask import g, session
 from marshmallow import EXCLUDE
+from werkzeug.exceptions import Forbidden
 
 from indico.modules.events.abstracts.lists import AbstractListGeneratorManagement
 from indico.modules.events.abstracts.models.abstracts import Abstract
@@ -19,6 +21,14 @@ from indico.modules.events.tracks import Track
 from indico.modules.users.models.affiliations import Affiliation
 
 from indico_jacow.models.affiliations import ContributionAffiliation
+
+
+@pytest.fixture(autouse=True)
+def plugin_context():
+    from indico_jacow.plugin import JACOWPlugin
+
+    with JACOWPlugin.instance.plugin_context():
+        yield
 
 
 def test_person_link_schema_pre_load_ignores_core_affiliation_for_jacow_affiliations(db, app):
@@ -69,6 +79,125 @@ def test_person_link_schema_post_dump_omits_core_affiliation_for_jacow_affiliati
         assert 'affiliation_id' not in data[0]
         assert 'affiliation_meta' not in data[0]
         assert data[0]['jacow_affiliations_ids'] == [affiliation.id]
+
+
+@pytest.fixture
+def dummy_brevo_data():
+    crap = {'totalBlacklisted': 0, 'totalSubscribers': 0, 'uniqueSubscribers': 0}
+    lists = [
+        GetListsResponseListsItem(id=1, folder_id=1, name='Users', **crap),
+        GetListsResponseListsItem(id=2, folder_id=2, name='Board', **crap),
+        GetListsResponseListsItem(id=3, folder_id=1, name='Announcements', **crap),
+        GetListsResponseListsItem(id=4, folder_id=2, name='Devs', **crap),
+    ]
+    folders = [
+        GetFolder(id=1, name='Mailing Lists', **crap),
+        GetFolder(id=2, name='RESTRICTED-Stakeholder Lists', **crap),
+    ]
+    return lists, folders
+
+
+@pytest.mark.parametrize(('acl_allowed', 'subscribed', 'expected'), (
+    (False, False, [
+        {
+            'key': '1',
+            'title': 'Mailing Lists',
+            'restricted': False,
+            'has_access': True,
+            'lists': [
+                {'id': 3, 'name': 'Announcements', 'subscribed': True},
+                {'id': 1, 'name': 'Users', 'subscribed': False},
+            ],
+        },
+    ]),
+    (False, True, [
+        {
+            'key': '1',
+            'title': 'Mailing Lists',
+            'restricted': False,
+            'has_access': True,
+            'lists': [
+                {'id': 3, 'name': 'Announcements', 'subscribed': True},
+                {'id': 1, 'name': 'Users', 'subscribed': False},
+            ],
+        },
+        {
+            'key': '2',
+            'title': 'Stakeholder Lists',
+            'restricted': True,
+            'has_access': False,
+            'lists': [
+                {'id': 4, 'name': 'Devs', 'subscribed': True},
+            ],
+        },
+    ]),
+    (True, False, [
+        {
+            'key': '1',
+            'title': 'Mailing Lists',
+            'restricted': False,
+            'has_access': True,
+            'lists': [
+                {'id': 3, 'name': 'Announcements', 'subscribed': True},
+                {'id': 1, 'name': 'Users', 'subscribed': False},
+            ],
+        },
+        {
+            'key': '2',
+            'title': 'Stakeholder Lists',
+            'restricted': True,
+            'has_access': True,
+            'lists': [
+                {'id': 2, 'name': 'Board', 'subscribed': False},
+                {'id': 4, 'name': 'Devs', 'subscribed': False},
+            ],
+        },
+    ]),
+))
+@pytest.mark.usefixtures('request_context')
+def test_mailing_lists_are_grouped_by_acl_access(dummy_user, dummy_brevo_data, acl_allowed, subscribed, expected):
+    from indico_jacow.controllers import RHUserMailingListsBase
+    from indico_jacow.plugin import JACOWPlugin
+
+    session.set_session_user(dummy_user)
+    if acl_allowed:
+        JACOWPlugin.settings.acls.add_principal('repo_managers', dummy_user)
+    lists, folders = dummy_brevo_data
+    rh = RHUserMailingListsBase()
+    subscribed = {3, 4} if subscribed else {3}
+    assert rh.group_mailing_lists(lists, folders, subscribed) == expected
+
+
+@pytest.mark.parametrize(('list_name', 'admin', 'repo_manager', 'allowed'), (
+    ('Board', False, False, False),
+    ('Board', False, True, True),
+    ('Board', True, False, True),
+    ('Announcements', False, False, True),
+))
+@pytest.mark.usefixtures('request_context')
+def test_mailing_list_access_checks(dummy_user, dummy_brevo_data, list_name, admin, repo_manager, allowed):
+    from indico_jacow.controllers import RHUserMailingListsBase
+    from indico_jacow.plugin import JACOWPlugin
+
+    if repo_manager:
+        JACOWPlugin.settings.acls.add_principal('repo_managers', dummy_user)
+    session.set_session_user(dummy_user)
+    dummy_user.is_admin = admin
+
+    lists, folders = dummy_brevo_data
+    folders = {f.id: f for f in folders}
+    mailing_list = next(x for x in lists if x.name == list_name)
+
+    class MockRHUserMailingListsBase(RHUserMailingListsBase):
+        def get_folder(self, folder_id):
+            return folders[folder_id]
+
+    rh = MockRHUserMailingListsBase()
+    if allowed:
+        rh.check_mailing_list_access(mailing_list)
+    else:
+        with pytest.raises(Forbidden):
+            rh.check_mailing_list_access(mailing_list)
 
 
 @pytest.mark.parametrize(('reviews', 'expected'), (
