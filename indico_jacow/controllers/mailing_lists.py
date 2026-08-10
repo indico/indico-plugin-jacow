@@ -12,7 +12,7 @@ from brevo import (AddContactToListRequestBodyEmails, Brevo, GetFolder, GetListR
 from brevo.core import ApiError
 from flask import request, session
 from flask_pluginengine import current_plugin
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, ServiceUnavailable
 from werkzeug.utils import cached_property
 
 from indico.core.errors import IndicoError
@@ -35,6 +35,8 @@ class RHUserMailingListsBase(RHUserBase):
             not current_plugin.settings.acls.contains_user('repo_managers', session.user)
         ):
             raise Forbidden('You cannot modify this user.')
+        if not current_plugin.settings.get('brevo_api_key'):
+            raise ServiceUnavailable('Mailing list integration is not configured')
 
     @cached_property
     def brevo_client(self):

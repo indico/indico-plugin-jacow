@@ -293,8 +293,9 @@ class JACOWPlugin(IndicoPlugin):
             return True
 
     def _extend_user_profile_menu(self, sender, user, **kwargs):
-        return SideMenuItem('mailing_lists', _('Mailing Lists'),
-                            url_for_plugin('jacow.user_mailing_lists'), 65, disabled=user.is_system)
+        if self.settings.get('brevo_api_key'):
+            return SideMenuItem('mailing_lists', _('Mailing Lists'),
+                                url_for_plugin('jacow.user_mailing_lists'), 65, disabled=user.is_system)
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         if 'jacow_affiliations_ids' not in data:
