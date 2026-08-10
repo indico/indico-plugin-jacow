@@ -156,7 +156,7 @@ def dummy_brevo_data():
 ))
 @pytest.mark.usefixtures('request_context')
 def test_mailing_lists_are_grouped_by_acl_access(dummy_user, dummy_brevo_data, acl_allowed, subscribed, expected):
-    from indico_jacow.controllers import RHUserMailingListsBase
+    from indico_jacow.controllers.mailing_lists import RHUserMailingListsBase
     from indico_jacow.plugin import JACOWPlugin
 
     session.set_session_user(dummy_user)
@@ -176,7 +176,7 @@ def test_mailing_lists_are_grouped_by_acl_access(dummy_user, dummy_brevo_data, a
 ))
 @pytest.mark.usefixtures('request_context')
 def test_mailing_list_access_checks(dummy_user, dummy_brevo_data, list_name, admin, repo_manager, allowed):
-    from indico_jacow.controllers import RHUserMailingListsBase
+    from indico_jacow.controllers.mailing_lists import RHUserMailingListsBase
     from indico_jacow.plugin import JACOWPlugin
 
     if repo_manager:
@@ -209,7 +209,7 @@ def test_mailing_list_access_checks(dummy_user, dummy_brevo_data, list_name, adm
      (1, 5, '', 0, 1, 1)),
 ))
 def test_get_abstracts(db, app, dummy_event, dummy_user, reviews, expected):
-    from indico_jacow.controllers import RHAbstractsExportBase
+    from indico_jacow.controllers.export import RHAbstractsExportBase
     rh = RHAbstractsExportBase()
     dummy_abstract = Abstract(friendly_id=314,
                               title='Broken Symmetry and the Mass of Gauge Vector Mesons',

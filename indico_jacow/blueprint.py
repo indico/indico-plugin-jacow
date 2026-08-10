@@ -9,42 +9,38 @@ from flask import has_request_context, request
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_jacow.controllers import (RHAbstractsExportCSV, RHAbstractsExportExcel, RHAbstractsStats,
-                                      RHContributionsExportCSV, RHContributionsExportExcel, RHCountries,
-                                      RHCreateAffiliation, RHDisplayAbstractsStatistics, RHMailingLists,
-                                      RHMailingListSubscription, RHPeerReviewCSVImport)
+from indico_jacow.controllers import export, mailing_lists, misc, stats
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
 
 
 # Statistics
-blueprint.add_url_rule('/abstracts/reviewing/statistics', 'reviewer_stats', RHDisplayAbstractsStatistics)
-blueprint.add_url_rule('/manage/abstracts/statistics', 'abstracts_stats', RHAbstractsStats)
+blueprint.add_url_rule('/abstracts/reviewing/statistics', 'reviewer_stats', stats.RHDisplayAbstractsStatistics)
+blueprint.add_url_rule('/manage/abstracts/statistics', 'abstracts_stats', stats.RHAbstractsStats)
 
 # Custom exports
 blueprint.add_url_rule('/manage/abstracts/abstracts_custom.csv', 'abstracts_csv_export_custom',
-                       RHAbstractsExportCSV, methods=('POST',))
+                       export.RHAbstractsExportCSV, methods=('POST',))
 blueprint.add_url_rule('/manage/abstracts/abstracts_custom.xlsx', 'abstracts_xlsx_export_custom',
-                       RHAbstractsExportExcel, methods=('POST',))
+                       export.RHAbstractsExportExcel, methods=('POST',))
 blueprint.add_url_rule('/manage/contributions/contributions_custom.csv', 'contributions_csv_export_custom',
-                       RHContributionsExportCSV, methods=('POST',))
+                       export.RHContributionsExportCSV, methods=('POST',))
 blueprint.add_url_rule('/manage/contributions/contributions_custom.xlsx', 'contributions_xlsx_export_custom',
-                       RHContributionsExportExcel, methods=('POST',))
+                       export.RHContributionsExportExcel, methods=('POST',))
 
 # Peer reviewing CSV import
-blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_import', RHPeerReviewCSVImport,
+blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_import', misc.RHPeerReviewCSVImport,
                        methods=('POST',))
 
-blueprint.add_url_rule('!/api/jacow/countries', 'countries', RHCountries)
-blueprint.add_url_rule('!/api/jacow/affiliation', 'create_affiliation', RHCreateAffiliation, methods=('POST',))
+blueprint.add_url_rule('!/api/jacow/affiliation', 'create_affiliation', misc.RHCreateAffiliation, methods=('POST',))
 
 
 # Mailing lists
 with blueprint.add_prefixed_rules('!/user/<int:user_id>', '!/user'):
-    blueprint.add_url_rule('/mailing-lists/', 'user_mailing_lists', RHMailingLists)
+    blueprint.add_url_rule('/mailing-lists/', 'user_mailing_lists', mailing_lists.RHMailingLists)
     blueprint.add_url_rule('/mailing-lists/subscriptions/<int:list_id>', 'user_mailing_lists_subscription',
-                           RHMailingListSubscription, methods=('PUT', 'DELETE'))
+                           mailing_lists.RHMailingListSubscription, methods=('PUT', 'DELETE'))
 
 
 @blueprint.url_defaults

@@ -2,7 +2,7 @@
 name = 'indico-plugin-jacow'
 description = 'Indico plugin with JACoW-specific functionality'
 readme = 'README.md'
-version = '3.3'
+version = '3.3-dev'
 license = 'MIT'
 authors = [{ name = 'Indico Team', email = 'indico-team@cern.ch' }]
 classifiers = [
@@ -13,7 +13,7 @@ classifiers = [
 ]
 requires-python = '>=3.12.2, <3.13'
 dependencies = [
-    'indico>=3.3',
+    'indico>=3.3.13.dev0',
     'brevo_python==5.0.1',
 ]
 

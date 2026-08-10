@@ -5,7 +5,7 @@
 // them and/or modify them under the terms of the MIT License; see
 // the LICENSE file for more details.
 
-import countriesURL from 'indico-url:plugin_jacow.countries';
+import countriesURL from 'indico-url:core.api_countries';
 import createAffiliationURL from 'indico-url:plugin_jacow.create_affiliation';
 import searchAffiliationURL from 'indico-url:users.api_affiliations';
 
