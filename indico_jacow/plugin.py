@@ -32,13 +32,13 @@ from indico.modules.events.timetable.views import WPManageTimetable
 from indico.modules.logs.controllers import RHUserLogs, RHUserLogsJSON
 from indico.modules.users import controllers as users_controllers
 from indico.modules.users.views import WPUser
-from indico.util.i18n import _
 from indico.web.flask.util import url_for
 from indico.web.forms.base import IndicoForm
 from indico.web.forms.fields import IndicoPasswordField, PrincipalListField
 from indico.web.forms.widgets import SwitchWidget
 from indico.web.menu import SideMenuItem, TopMenuItem
 
+from indico_jacow import _
 from indico_jacow.blueprint import blueprint
 from indico_jacow.models.affiliations import AbstractAffiliation, ContributionAffiliation
 

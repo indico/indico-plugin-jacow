@@ -21,11 +21,12 @@ from indico.modules.users.schemas import AffiliationSchema
 from indico.modules.users.util import search_affiliations
 from indico.util.countries import get_country
 from indico.util.date_time import now_utc
-from indico.util.i18n import _
 from indico.util.marshmallow import not_empty, validate_with_message
 from indico.util.string import validate_email
 from indico.web.args import use_args, use_kwargs
 from indico.web.rh import RHProtected
+
+from indico_jacow import _
 
 
 class RHPeerReviewCSVImport(RHManagePapersBase):
