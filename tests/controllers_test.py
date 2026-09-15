@@ -5,6 +5,8 @@
 # them and/or modify them under the terms of the MIT License; see
 # the LICENSE file for more details.
 
+from types import SimpleNamespace
+
 import pytest
 from brevo import GetFolder, GetListsResponseListsItem
 from flask import g, session
@@ -61,11 +63,12 @@ def test_person_link_schema_pre_load_ignores_core_affiliation_for_jacow_affiliat
         assert person_link_data['affiliation'] == affiliation_text
 
 
-def test_person_link_schema_post_dump_omits_core_affiliation_for_jacow_affiliations(db, app):
+def test_person_link_schema_post_dump_omits_core_affiliation_for_jacow_affiliations(db, app, dummy_event):
     from indico.modules.events.persons.schemas import PersonLinkSchema
 
     from indico_jacow.plugin import JACOWPlugin
 
+    JACOWPlugin.event_settings.set(dummy_event, 'multiple_affiliations', True)
     affiliation = Affiliation(name='Affiliation One')
     db.session.add(affiliation)
     db.session.flush()
@@ -74,7 +77,9 @@ def test_person_link_schema_post_dump_omits_core_affiliation_for_jacow_affiliati
     data = [{'affiliation_id': affiliation.id, 'affiliation_meta': {'id': affiliation.id}}]
 
     with app.test_request_context():
-        JACOWPlugin._person_link_schema_post_dump(None, PersonLinkSchema, data, [person_link])
+        g.rh = SimpleNamespace(event=dummy_event)
+        with db.session.no_autoflush:
+            JACOWPlugin.instance._person_link_schema_post_dump(PersonLinkSchema, data, [person_link])
 
         assert 'affiliation_id' not in data[0]
         assert 'affiliation_meta' not in data[0]
