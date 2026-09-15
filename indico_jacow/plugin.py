@@ -306,6 +306,8 @@ class JACOWPlugin(IndicoPlugin):
         jacow_affiliations_ids[data['email'].lower()] = data.get('jacow_affiliations_ids', [])
 
     def _person_link_schema_post_dump(self, sender, data, orig, **kwargs):
+        if not self.event_settings.get(g.rh.event, 'multiple_affiliations'):
+            return
         if not all(isinstance(p, (AbstractPersonLink, ContributionPersonLink)) for p in orig):
             return
         for person, person_link in zip(data, orig, strict=True):
