@@ -15,6 +15,9 @@ from indico.modules.events.contributions.util import generate_spreadsheet_from_c
 from indico.util.spreadsheets import send_csv, send_xlsx
 from indico.web.flask.util import url_for
 
+from indico_jacow.models.profiles import format_person_initials, format_person_name, uses_full_first_name
+from indico_jacow.util import get_ror_id
+
 
 def _append_affiliation_data_fields(headers, rows, items):
     def make_address(affiliation):
@@ -43,6 +46,36 @@ def _append_affiliation_data_fields(headers, rows, items):
         rows[idx]['Co-Authors (address)'] = [full_name_and_address(a) for a in item.secondary_authors]
 
 
+def _append_profile_data_fields(headers, rows, items):
+    """Add author data from the users' JACoW profiles (initials, ORCID and ROR IDs)."""
+    def name_and_data(person, data):
+        name = format_person_name(person)
+        data = '; '.join(data)
+        return f'{name} ({data})' if data else name
+
+    def name_and_orcid(person):
+        profile = person.person.user.jacow_profile if person.person.user else None
+        return name_and_data(person, [profile.orcid] if profile and profile.orcid else [])
+
+    def name_and_ror(person):
+        return name_and_data(person, [get_ror_id(ja.affiliation) or '-' for ja in person.jacow_affiliations])
+
+    roles = (('Speakers', 'speakers'), ('Primary authors', 'primary_authors'), ('Co-Authors', 'secondary_authors'))
+    for title, __ in roles:
+        headers.extend((f'{title} (first name)', f'{title} (initials)', f'{title} (full first name)',
+                        f'{title} (last name)', f'{title} (ORCID)', f'{title} (ROR)'))
+
+    for idx, item in enumerate(items):
+        for title, attr in roles:
+            persons = getattr(item, attr)
+            rows[idx][f'{title} (first name)'] = [p.first_name for p in persons]
+            rows[idx][f'{title} (initials)'] = [format_person_initials(p) for p in persons]
+            rows[idx][f'{title} (full first name)'] = ['Yes' if uses_full_first_name(p) else 'No' for p in persons]
+            rows[idx][f'{title} (last name)'] = [p.last_name for p in persons]
+            rows[idx][f'{title} (ORCID)'] = [name_and_orcid(p) for p in persons]
+            rows[idx][f'{title} (ROR)'] = [name_and_ror(p) for p in persons]
+
+
 class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
     def get_ratings(self, abstract):
         result = defaultdict(list)
@@ -56,6 +89,7 @@ class RHAbstractsExportBase(RHManageAbstractsExportActionsBase):
         headers, rows = generate_spreadsheet_from_abstracts(self.abstracts, export_config['static_item_ids'],
                                                             export_config['dynamic_items'])
         _append_affiliation_data_fields(headers, rows, self.abstracts)
+        _append_profile_data_fields(headers, rows, self.abstracts)
 
         def get_question_column(title, value):
             return f'Question {title} ({value!s})'
@@ -105,6 +139,7 @@ class RHContributionsExportBase(RHManageContributionsExportActionsBase):
     def _generate_spreadsheet(self):
         headers, rows = generate_spreadsheet_from_contributions(self.contribs)
         _append_affiliation_data_fields(headers, rows, self.contribs)
+        _append_profile_data_fields(headers, rows, self.contribs)
         return headers, rows
 
 

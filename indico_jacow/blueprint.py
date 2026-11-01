@@ -9,7 +9,7 @@ from flask import has_request_context, request
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_jacow.controllers import export, mailing_lists, misc, stats
+from indico_jacow.controllers import export, mailing_lists, misc, profile, stats
 
 
 blueprint = IndicoPluginBlueprint('jacow', __name__, url_prefix='/event/<int:event_id>')
@@ -34,6 +34,10 @@ blueprint.add_url_rule('/manage/api/papers/jacow-csv-import', 'peer_review_csv_i
                        methods=('POST',))
 
 blueprint.add_url_rule('!/api/jacow/affiliation', 'create_affiliation', misc.RHCreateAffiliation, methods=('POST',))
+blueprint.add_url_rule('!/api/jacow/affiliation/<int:affiliation_id>/ror', 'affiliation_ror', profile.RHAffiliationROR,
+                       methods=('PUT',))
+blueprint.add_url_rule('!/api/jacow/user/<int:user_id>/affiliations', 'user_profile_affiliations',
+                       profile.RHUserProfileAffiliations)
 
 
 # Mailing lists
@@ -42,8 +46,23 @@ with blueprint.add_prefixed_rules('!/user/<int:user_id>', '!/user'):
     blueprint.add_url_rule('/mailing-lists/subscriptions/<int:list_id>', 'user_mailing_lists_subscription',
                            mailing_lists.RHMailingListSubscription, methods=('PUT', 'DELETE'))
 
+# JACoW profile
+with blueprint.add_prefixed_rules('!/user/<int:user_id>', '!/user'):
+    blueprint.add_url_rule('/jacow-profile/', 'user_jacow_profile', profile.RHUserJACoWProfile)
+    blueprint.add_url_rule('/jacow-profile/api', 'user_jacow_profile_api', profile.RHUserJACoWProfileAPI,
+                           methods=('GET', 'PUT'))
+    blueprint.add_url_rule('/jacow-profile/orcid/connect', 'user_jacow_profile_orcid_connect',
+                           profile.RHORCIDConnect)
+    blueprint.add_url_rule('/jacow-profile/orcid', 'user_jacow_profile_orcid', profile.RHORCIDDisconnect,
+                           methods=('DELETE',))
+blueprint.add_url_rule('!/jacow/orcid/callback', 'orcid_callback', profile.RHORCIDCallback)
+
 
 @blueprint.url_defaults
 def _add_user_id(endpoint, values):
-    if endpoint.startswith('plugin_jacow.user_mailing_lists') and 'user_id' not in values and has_request_context():
+    if (
+        endpoint.startswith(('plugin_jacow.user_mailing_lists', 'plugin_jacow.user_jacow_profile')) and
+        'user_id' not in values and
+        has_request_context()
+    ):
         values['user_id'] = request.view_args.get('user_id')
