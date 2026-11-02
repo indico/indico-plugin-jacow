@@ -13,8 +13,8 @@ from marshmallow import fields
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, ServiceUnavailable
 
 from indico.core.db import db
-from indico.core.plugins import url_for_plugin
 from indico.core.errors import UserValueError
+from indico.core.plugins import url_for_plugin
 from indico.modules.logs.models.entries import LogKind, UserLogRealm
 from indico.modules.users import User
 from indico.modules.users.controllers import RHUserBase
