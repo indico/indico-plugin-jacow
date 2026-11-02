@@ -1,0 +1,20 @@
+{% extends '~users/personal_data.html' %}
+{% from 'message_box.html' import message_box %}
+
+{%- block user_content %}
+    {% call message_box('info') %}
+        {% trans url=url_for_plugin('jacow.user_jacow_profile') -%}
+            Affiliations are managed in the <a href="{{ url }}">JACoW profile</a>.
+        {%- endtrans %}
+    {% endcall %}
+    {#- The form is rendered by Indico core, so the affiliation field is hidden by its
+        position: it is the field right after the first/last name group. -#}
+    <style>
+        .jacow-personal-data #personal-details-form-container .equal.width.fields + .field {
+            display: none;
+        }
+    </style>
+    <div class="jacow-personal-data">
+        {{ super() }}
+    </div>
+{% endblock %}

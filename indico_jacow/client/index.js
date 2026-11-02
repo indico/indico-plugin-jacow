@@ -14,6 +14,7 @@ import MultipleAffiliationsSelector, {
 } from './MultipleAffiliationsSelector';
 import {PeerReviewManagersFileButton} from './PeerReviewManagersFileInput';
 import './mailing_lists';
+import './profile';
 
 const PLUGIN_NAME = 'jacow';
 

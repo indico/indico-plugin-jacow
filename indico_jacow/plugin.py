@@ -7,12 +7,14 @@
 
 import os
 
-from flask import g, session
+from flask import g, request, session
 from flask_pluginengine import render_plugin_template
-from wtforms.fields import BooleanField
+from wtforms.fields import BooleanField, StringField
+from wtforms.validators import DataRequired
 
 from indico.core import signals
 from indico.core.db import db
+from indico.core.errors import UserValueError
 from indico.core.plugins import IndicoPlugin, url_for_plugin
 from indico.modules.events.abstracts.fields import AbstractPersonLinkListField
 from indico.modules.events.abstracts.forms import AbstractForm
@@ -31,6 +33,7 @@ from indico.modules.events.registration.schemas import CheckinRegistrationSchema
 from indico.modules.events.timetable.views import WPManageTimetable
 from indico.modules.logs.controllers import RHUserLogs, RHUserLogsJSON
 from indico.modules.users import controllers as users_controllers
+from indico.modules.users.models.affiliations import Affiliation
 from indico.modules.users.views import WPUser
 from indico.web.flask.util import url_for
 from indico.web.forms.base import IndicoForm
@@ -41,6 +44,9 @@ from indico.web.menu import SideMenuItem, TopMenuItem
 from indico_jacow import _
 from indico_jacow.blueprint import blueprint
 from indico_jacow.models.affiliations import AbstractAffiliation, ContributionAffiliation
+from indico_jacow.models.profiles import UserAffiliation, UserProfile
+from indico_jacow.orcid import has_connected_orcid
+from indico_jacow.util import get_ror_id
 
 
 REPO_MANAGER_RHS = (
@@ -62,12 +68,26 @@ class SettingsForm(IndicoForm):
     _fieldsets = [
         (_('General'), ('brevo_api_key',)),
         (_('User profile management'), ('repo_managers',)),
+        (_('Affiliations'), ('ror_meta_key',)),
+        (_('ORCID'), ('orcid_client_id', 'orcid_client_secret', 'orcid_sandbox')),
     ]
 
     repo_managers = PrincipalListField(_('Central Repo Managers'), allow_groups=True,
                                        description=_('List of users who can manage Indico user profiles without being '
                                                      'full Indico admins'))
     brevo_api_key = IndicoPasswordField(_('Brevo API key'), toggle=True)
+    ror_meta_key = StringField(_('ROR ID metadata key'), [DataRequired()],
+                               description=_('The key in the affiliation metadata which contains the ROR ID of '
+                                             'affiliations imported from the ROR registry. Use dots to access '
+                                             'nested values, e.g. "external_ids.ror".'))
+    orcid_client_id = StringField(_('ORCID client ID'),
+                                  description=_('The client ID of your ORCID public API credentials. Users can '
+                                                'only connect their ORCID iD when this is set. Register '
+                                                '"<indico-url>/jacow/orcid/callback" as redirect URI at ORCID.'))
+    orcid_client_secret = IndicoPasswordField(_('ORCID client secret'), toggle=True)
+    orcid_sandbox = BooleanField(_('ORCID sandbox'), widget=SwitchWidget(),
+                                 description=_('Use the ORCID sandbox (sandbox.orcid.org) instead of the production '
+                                               'ORCID registry. Only enable this for testing.'))
 
 
 class JACOWPlugin(IndicoPlugin):
@@ -80,12 +100,18 @@ class JACOWPlugin(IndicoPlugin):
     settings_form = SettingsForm
     default_settings = {
         'brevo_api_key': '',
+        'ror_meta_key': 'ror_id',
+        'orcid_client_id': '',
+        'orcid_client_secret': '',
+        'orcid_sandbox': False,
     }
     acl_settings = {
         'repo_managers',
     }
     default_event_settings = {
         'multiple_affiliations': False,
+        'require_orcid': False,
+        'require_ror': False,
     }
 
     def init(self):
@@ -116,6 +142,8 @@ class JACOWPlugin(IndicoPlugin):
         self.connect(signals.plugin.schema_post_dump, self._checkin_registration_schema_post_dump,
                      sender=CheckinRegistrationSchema)
         self.connect(signals.users.merged, self._merge_users)
+        self.connect(signals.rh.before_process, self._block_personal_data_affiliation,
+                     sender=users_controllers.RHPersonalDataUpdate)
         wps = (WPContributions, WPDisplayAbstracts, WPManageAbstracts, WPManageContributions,
                WPMyContributions, WPManagePapers, WPManageTimetable, WPUser)
         self.inject_bundle('main.js', wps)
@@ -141,18 +169,42 @@ class JACOWPlugin(IndicoPlugin):
 
     def _add_person_lists_settings(self, form_cls, form_kwargs, **kwargs):
         multiple_affiliations = self.event_settings.get(g.rh.event, 'multiple_affiliations')
-        return (
+        yield (
             'multiple_affiliations',
             BooleanField(_('Multiple affiliations'), widget=SwitchWidget(),
                          description=_('Gives submitters the ability to list multiple affiliations per author in '
                                        'abstracts and contributions. Once enabled, this setting cannot be disabled.'),
                          default=multiple_affiliations, render_kw={'disabled': multiple_affiliations})
         )
+        yield (
+            'require_orcid',
+            BooleanField(_('Require ORCID'), widget=SwitchWidget(),
+                         description=_('Only people with an Indico account that is connected to ORCID (in their '
+                                       'JACoW profile) can be added as authors or speakers of abstracts and '
+                                       'contributions. People who were already added are not affected.'),
+                         default=self.event_settings.get(g.rh.event, 'require_orcid'))
+        )
+        yield (
+            'require_ror',
+            BooleanField(_('Require ROR'), widget=SwitchWidget(),
+                         description=_('Only affiliations with a ROR ID can be added to the authors and speakers of '
+                                       'abstracts and contributions. Affiliations that were already added are not '
+                                       'affected. Requires multiple affiliations.'),
+                         default=self.event_settings.get(g.rh.event, 'require_ror'))
+        )
 
     def _person_lists_form_validated(self, form, **kwargs):
-        if (not isinstance(form, ManagePersonListsForm) or
-                not form.ext__multiple_affiliations.data or
-                self.event_settings.get(g.rh.event, 'multiple_affiliations')):
+        if not isinstance(form, ManagePersonListsForm):
+            return
+        # the multiple affiliations switch is disabled (and thus not submitted) once it has been enabled
+        multiple_affiliations = (form.ext__multiple_affiliations.data or
+                                 self.event_settings.get(g.rh.event, 'multiple_affiliations'))
+        if form.ext__require_ror.data and not multiple_affiliations:
+            form.ext__require_ror.errors.append(_('ROR IDs can only be required with multiple affiliations.'))
+            return False
+        self.event_settings.set(g.rh.event, 'require_orcid', form.ext__require_orcid.data)
+        self.event_settings.set(g.rh.event, 'require_ror', form.ext__require_ror.data)
+        if not form.ext__multiple_affiliations.data or self.event_settings.get(g.rh.event, 'multiple_affiliations'):
             return
         self.event_settings.set(g.rh.event, 'multiple_affiliations', True)
         # Populate tables with the current affiliations
@@ -175,25 +227,65 @@ class JACOWPlugin(IndicoPlugin):
     def _submission_form_validated(self, form, **kwargs):
         if not isinstance(form, (AbstractForm, ContributionForm)):
             return
-        if not self.event_settings.get(form.event, 'multiple_affiliations'):
-            return
         if isinstance(form, AbstractForm):
             person_links = form.person_links
             affiliations_cls = AbstractAffiliation
         else:
             person_links = form.person_link_data
             affiliations_cls = ContributionAffiliation
+        if self.event_settings.get(form.event, 'require_orcid') and not self._check_orcid_required(person_links):
+            return False
+        if not self.event_settings.get(form.event, 'multiple_affiliations'):
+            return
         affiliations_ids = g.pop('jacow_affiliations_ids', {})
+        person_affiliations = []
         for person_link in person_links.data:
-            person_affiliations = affiliations_ids.get(person_link.person.email, [])
-            if not person_affiliations:
+            ids = (affiliations_ids.get(person_link.person.email) or
+                   self._get_profile_affiliation_ids(person_link.person.user))
+            if not ids:
                 person_links.errors.append(_('Affiliations are required for everyone'))
                 return False
+            person_affiliations.append((person_link, ids))
+        if (self.event_settings.get(form.event, 'require_ror') and
+                not self._check_ror_required(person_links, person_affiliations)):
+            return False
+        for person_link, ids in person_affiliations:
             person_link.jacow_affiliations = []
             db.session.flush()
             person_link.jacow_affiliations = [affiliations_cls(affiliation_id=id, display_order=i)
-                                              for i, id in enumerate(person_affiliations)]
+                                              for i, id in enumerate(ids)]
         db.session.flush()
+
+    def _check_orcid_required(self, person_links):
+        # Only people who are newly added are checked, so existing abstracts and contributions can still
+        # be edited after enabling the setting. People already linked to the object have a persistent link.
+        missing = [person_link.full_name for person_link in person_links.data
+                   if person_link.id is None and not has_connected_orcid(person_link.person.user)]
+        if not missing:
+            return True
+        person_links.errors.append(_('Only people who connected their ORCID iD in their JACoW profile can be added. '
+                                     'Missing for: {names}').format(names=', '.join(missing)))
+        return False
+
+    def _check_ror_required(self, person_links, person_affiliations):
+        # Only newly added affiliations are checked, so existing abstracts and contributions can still be
+        # edited after enabling the setting, even if some of their affiliations have no ROR ID.
+        new_ids = {id_ for person_link, ids in person_affiliations
+                   for id_ in set(ids) - {ja.affiliation_id for ja in person_link.jacow_affiliations}}
+        if not new_ids:
+            return True
+        missing = sorted(aff.name for aff in Affiliation.query.filter(Affiliation.id.in_(new_ids))
+                         if not get_ror_id(aff))
+        if not missing:
+            return True
+        person_links.errors.append(_('Only affiliations with a ROR ID can be added. Missing for: {names}')
+                                   .format(names=', '.join(missing)))
+        return False
+
+    def _get_profile_affiliation_ids(self, user):
+        if not user or not user.jacow_profile:
+            return []
+        return [ua.affiliation_id for ua in user.jacow_profile.affiliations]
 
     def _person_link_field_extra_params(self, field, **kwargs):
         if (
@@ -228,6 +320,7 @@ class JACOWPlugin(IndicoPlugin):
     def _event_cloned(self, event, new_event, used_cloners, shared_data, **kwargs):
         self.event_settings.set(new_event, 'multiple_affiliations',
                                 self.event_settings.get(event, 'multiple_affiliations'))
+        self.event_settings.set(new_event, 'require_orcid', self.event_settings.get(event, 'require_orcid'))
         if 'contributions' in used_cloners:
             try:
                 person_link_map = shared_data['contributions']['person_link_map']
@@ -293,9 +386,11 @@ class JACOWPlugin(IndicoPlugin):
             return True
 
     def _extend_user_profile_menu(self, sender, user, **kwargs):
+        yield SideMenuItem('jacow_profile', _('JACoW profile'), url_for_plugin('jacow.user_jacow_profile'), 70,
+                           disabled=user.is_system)
         if self.settings.get('brevo_api_key'):
-            return SideMenuItem('mailing_lists', _('Mailing Lists'),
-                                url_for_plugin('jacow.user_mailing_lists'), 65, disabled=user.is_system)
+            yield SideMenuItem('mailing_lists', _('Mailing Lists'),
+                               url_for_plugin('jacow.user_mailing_lists'), 65, disabled=user.is_system)
 
     def _person_link_schema_pre_load(self, sender, data, **kwargs):
         if 'jacow_affiliations_ids' not in data:
@@ -325,8 +420,32 @@ class JACOWPlugin(IndicoPlugin):
             reg['transaction_currency'] = registration.transaction.currency
             reg['transaction_status'] = registration.transaction.status.name
 
+    def _block_personal_data_affiliation(self, sender, rh, **kwargs):
+        # affiliations are managed in the JACoW profile, which keeps the core affiliation in sync
+        data = request.get_json(silent=True) or {}
+        if {'affiliation', 'affiliation_id'} & data.keys():
+            raise UserValueError(_('Affiliations can only be changed in the JACoW profile.'))
+
     def _merge_users(self, target, source, **kwargs):
         self.settings.acls.merge_users(target, source)
+        self._merge_profiles(target, source)
+
+    def _merge_profiles(self, target, source):
+        if not (source_profile := source.jacow_profile):
+            return
+        if not (target_profile := target.jacow_profile):
+            target.jacow_profile = UserProfile(
+                orcid=source_profile.orcid,
+                orcid_connected_dt=source_profile.orcid_connected_dt,
+                initials_format=source_profile.initials_format,
+                full_first_name=source_profile.full_first_name,
+                affiliations=[UserAffiliation(affiliation=ua.affiliation, display_order=ua.display_order)
+                              for ua in source_profile.affiliations]
+            )
+        elif not target_profile.orcid:
+            target_profile.orcid = source_profile.orcid
+            target_profile.orcid_connected_dt = source_profile.orcid_connected_dt
+        source.jacow_profile = None
 
     def get_blueprints(self):
         return blueprint

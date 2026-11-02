@@ -7,6 +7,7 @@
 
 import countriesURL from 'indico-url:core.api_countries';
 import createAffiliationURL from 'indico-url:plugin_jacow.create_affiliation';
+import userProfileAffiliationsURL from 'indico-url:plugin_jacow.user_profile_affiliations';
 import searchAffiliationURL from 'indico-url:users.api_affiliations';
 
 import _ from 'lodash';
@@ -14,7 +15,9 @@ import PropTypes from 'prop-types';
 import React, {useState} from 'react';
 import {DndProvider} from 'react-dnd';
 import {HTML5Backend} from 'react-dnd-html5-backend';
+import {useForm} from 'react-final-form';
 import {
+  Button,
   Dropdown,
   Header,
   Icon,
@@ -58,7 +61,7 @@ const getSubheader = ({city, countryName}) => {
   return city || countryName;
 };
 
-const DraggableAffiliation = ({affiliation, onDelete, index, onMove}) => {
+const DraggableAffiliation = ({affiliation, onDelete, index, onMove, renderExtra}) => {
   const [dragRef, itemRef, style] = useSortableItem({
     type: 'affiliation',
     index,
@@ -76,6 +79,7 @@ const DraggableAffiliation = ({affiliation, onDelete, index, onMove}) => {
         content={affiliation.meta.name}
         subheader={getSubheader(affiliation.meta)}
       />
+      {renderExtra && renderExtra(affiliation, index)}
       <Icon name="remove" color="red" size="large" styleName="delete" onClick={onDelete} link />
     </div>
   );
@@ -86,9 +90,19 @@ DraggableAffiliation.propTypes = {
   onDelete: PropTypes.func.isRequired,
   index: PropTypes.number.isRequired,
   onMove: PropTypes.func.isRequired,
+  renderExtra: PropTypes.func,
 };
 
-const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
+DraggableAffiliation.defaultProps = {
+  renderExtra: null,
+};
+
+export const MultipleAffiliationsField = ({
+  onChange,
+  value,
+  currentAffiliations,
+  renderAffiliationExtra,
+}) => {
   const [searchUsed, setSearchUsed] = useState(false);
   const [_searchResults, setSearchResults] = useState([]);
   const searchResults = [
@@ -145,6 +159,7 @@ const MultipleAffiliationsField = ({onChange, value, currentAffiliations}) => {
                     index={idx}
                     onMove={moveItem}
                     affiliation={affiliation}
+                    renderExtra={renderAffiliationExtra}
                     onDelete={() => onChange(value.filter((_, i) => i !== idx))}
                   />
                 ))
@@ -202,6 +217,61 @@ MultipleAffiliationsField.propTypes = {
   onChange: PropTypes.func.isRequired,
   value: PropTypes.arrayOf(affiliationSchema).isRequired,
   currentAffiliations: PropTypes.array.isRequired,
+  renderAffiliationExtra: PropTypes.func,
+};
+
+MultipleAffiliationsField.defaultProps = {
+  renderAffiliationExtra: null,
+};
+
+export const affiliationToValue = meta => ({id: meta.id, text: meta.name, meta});
+
+function LoadProfileAffiliationsButton({userId}) {
+  const form = useForm();
+  const [loading, setLoading] = useState(false);
+  const [empty, setEmpty] = useState(false);
+
+  const loadAffiliations = async () => {
+    setLoading(true);
+    let resp;
+    try {
+      resp = await indicoAxios.get(userProfileAffiliationsURL({user_id: userId}));
+    } catch (error) {
+      handleAxiosError(error);
+      return;
+    } finally {
+      setLoading(false);
+    }
+    const affiliations = camelizeKeys(resp.data);
+    setEmpty(!affiliations.length);
+    if (affiliations.length) {
+      form.change('affiliationsData', affiliations.map(affiliationToValue));
+    }
+  };
+
+  return (
+    <div style={{marginBottom: '1em'}}>
+      <Button
+        type="button"
+        size="small"
+        icon="user"
+        content={Translate.string('Use affiliations from user profile')}
+        onClick={loadAffiliations}
+        loading={loading}
+        disabled={loading}
+      />
+      {empty && (
+        <Message
+          size="small"
+          content={Translate.string('This user has no affiliations in their JACoW profile.')}
+        />
+      )}
+    </div>
+  );
+}
+
+LoadProfileAffiliationsButton.propTypes = {
+  userId: PropTypes.number.isRequired,
 };
 
 export default function MultipleAffiliationsSelector({
@@ -234,14 +304,12 @@ export default function MultipleAffiliationsSelector({
       header={Translate.string('Edit Affiliations')}
       submitLabel={Translate.string('Save')}
       initialValues={{
-        affiliationsData:
-          persons[selected].jacowAffiliationsMeta?.map(x => ({
-            id: x.id,
-            text: x.name,
-            meta: x,
-          })) || [],
+        affiliationsData: persons[selected].jacowAffiliationsMeta?.map(affiliationToValue) || [],
       }}
     >
+      {persons[selected].userId && (
+        <LoadProfileAffiliationsButton userId={persons[selected].userId} />
+      )}
       <FinalField
         name="affiliationsData"
         component={MultipleAffiliationsField}

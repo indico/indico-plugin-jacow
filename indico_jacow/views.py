@@ -22,3 +22,7 @@ class WPAbstractsStats(WPJinjaMixinPlugin, WPEventManagement):
 
 class WPUserMailingLists(WPJinjaMixinPlugin, WPUser):
     sidemenu_option = 'mailing_lists'
+
+
+class WPUserJACoWProfile(WPJinjaMixinPlugin, WPUser):
+    sidemenu_option = 'jacow_profile'
